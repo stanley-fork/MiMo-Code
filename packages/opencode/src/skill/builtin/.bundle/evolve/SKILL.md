@@ -85,8 +85,13 @@ export default {
 | `chat.params` | Modify temperature, topP, maxOutputTokens |
 | `experimental.chat.system.transform` | Append to system prompt |
 | `experimental.chat.messages.transform` | Modify message list sent to LLM |
-| `permission.ask` | Auto-allow/deny permission requests |
+| `session.pre` / `session.post` | Session runLoop lifecycle; `post` receives the full trajectory |
+| `session.userQuery.pre` / `.post` | Per-LLM-step lifecycle; cancel or inspect each step |
+| `actor.preStop` / `actor.postStop` | Gate subagent delivery; `continue=true` forces another turn |
+| `permission.ask` | Auto-allow/deny permission requests (not yet wired) |
 | `shell.env` | Inject environment variables |
+
+Full list with input/output types: @reference/hook-api.md
 
 ## Creating Skills
 
