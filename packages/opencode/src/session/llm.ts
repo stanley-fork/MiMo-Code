@@ -715,26 +715,32 @@ const live: Layer.Layer<
                 }),
               )
 
-              const base = Stream.fromAsyncIterable(result.fullStream, (e) =>
+              // Structurally identical to the pre-#1679 stream: a bare scoped
+              // stream over the provider's fullStream. No per-event combinator,
+              // no extra catch layer — so the normal (non-error) event flow and
+              // the AbortController scope teardown are exactly as before. The
+              // reactive prefill retry is layered lazily below and only pays a
+              // cost when an actual error surfaces.
+              return Stream.fromAsyncIterable(result.fullStream, (e) =>
                 e instanceof Error ? e : new Error(String(e)),
               )
-              // Provider API errors (e.g. the Bedrock/gateway prefill-rejection
-              // 400) arrive as in-band `{ type: "error", error }` events, not as
-              // a fault of this stream — the processor rethrows them from its
-              // handleEvent tap. To let the reactive retry below re-run with the
-              // prefill pruned, promote a prefill-rejection error event into a
-              // stream FAILURE on the first (un-pruned) pass, so catchCause fires.
-              // On the pruned retry we pass events through untouched: any residual
-              // error flows to the processor and surfaces normally (no loop).
-              if (dropAssistantPrefill) return base
-              return base.pipe(
-                Stream.mapEffect((event) =>
-                  event.type === "error" && ProviderTransform.isAssistantPrefillRejection(event.error)
-                    ? Effect.fail(event.error instanceof Error ? event.error : new Error(String(event.error)))
-                    : Effect.succeed(event),
-                ),
-              )
             }),
+          ),
+        )
+
+      // Promote the Bedrock/gateway prefill-rejection 400 — which arrives as an
+      // in-band `{ type: "error", error }` event, not a stream fault — into a
+      // stream FAILURE so the reactive retry can catch it. `Stream.flatMap`
+      // short-circuits every non-matching event straight through with a pure
+      // `Stream.succeed` (no per-event Effect fiber, unlike `Stream.mapEffect`),
+      // and the failing branch is only ever constructed for the specific error
+      // event. On a clean stream this is a transparent passthrough.
+      const promotePrefillRejection = (stream: Stream.Stream<Event, Error, never>) =>
+        stream.pipe(
+          Stream.flatMap((event) =>
+            event.type === "error" && ProviderTransform.isAssistantPrefillRejection(event.error)
+              ? Stream.fail(event.error instanceof Error ? event.error : new Error(String(event.error)))
+              : Stream.succeed(event),
           ),
         )
 
@@ -745,13 +751,21 @@ const live: Layer.Layer<
       // detection and 400s with "does not support assistant message prefill".
       // Keying off that deterministic error body — not the model id — we retry
       // exactly ONCE with the prefill pruned. Guarded to a single reprune so a
-      // persistent failure surfaces the original error instead of looping.
-      return attempt(false).pipe(
-        Stream.catchCause((cause) => {
-          const error = Cause.squash(cause)
-          return ProviderTransform.isAssistantPrefillRejection(error)
-            ? attempt(true).pipe(Stream.catchCause(() => Stream.failCause(cause)))
-            : Stream.failCause(cause)
+      // persistent failure surfaces the retry's OWN error, falling back to the
+      // original prefill cause only when the resend is again prefill-rejected.
+      return promotePrefillRejection(attempt(false)).pipe(
+        Stream.catchCause((primaryCause) => {
+          if (!ProviderTransform.isAssistantPrefillRejection(Cause.squash(primaryCause)))
+            return Stream.failCause(primaryCause)
+          // Pruned resend passes events through untouched: any residual error
+          // flows to the processor and surfaces normally (no promotion, no loop).
+          return attempt(true).pipe(
+            Stream.catchCause((retryCause) =>
+              ProviderTransform.isAssistantPrefillRejection(Cause.squash(retryCause))
+                ? Stream.failCause(primaryCause)
+                : Stream.failCause(retryCause),
+            ),
+          )
         }),
       )
     }

@@ -277,6 +277,18 @@ function supportsAssistantPrefill(model: Provider.Model): boolean {
 // behind a cross-region routing prefix: "anthropic.claude-3-5-sonnet",
 // "us.anthropic.claude-opus-4-6", "eu.meta.llama3-70b". Anthropic-native ids use
 // a bare "claude-*" / date / "@version" form with no such vendor.model segment.
+//
+// Known tradeoff: a non-Bedrock provider that also exposes a dotted vendor id
+// (e.g. a native Mistral endpoint serving "mistral.large") would false-positive
+// here and get its trailing assistant prefill dropped. We deliberately do NOT
+// gate this on providerID/npm being Bedrock — the whole reason this check exists
+// is the gateway case where a Bedrock backend is reached under a clean alias
+// ("anthropic" providerID), which such a gate would miss again. The false
+// positive is low-impact (one dropped prefill, not an error) and is the safer
+// side to err on, since sending a prefill to a real Bedrock backend hard-400s.
+// The reactive error-body retry in session/llm.ts backs both directions: it
+// re-sends pruned only on the actual prefill-rejection 400, so a genuine miss
+// self-heals without relying on this id heuristic being perfect.
 function isBedrockModelId(id: string): boolean {
   return /(^|[./])(anthropic|meta|amazon|cohere|mistral|ai21|deepseek)\.[a-z0-9]/i.test(id)
 }
