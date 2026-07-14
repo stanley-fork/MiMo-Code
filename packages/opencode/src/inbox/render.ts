@@ -29,11 +29,30 @@ export function renderActorNotification(event: {
   // For a stalled notification: how long (ms) since the child's last turn advanced.
   stalledForMs?: number
 }): string {
-  const header = `Background actor "${event.description}" (actor_id: ${event.actorID})`
+  const header = `Background sub-session "${event.description}" (actor_id: ${event.actorID})`
   if (event.status === "completed") {
-    const statusLine = `Status: ${event.reportedStatus ?? "unknown"}`
+    // event.status is the sub-session *process lifecycle* — it ended cleanly.
+    // event.reportedStatus is the *task* outcome the sub-session self-reported
+    // via a `**Status**: ...` header. These are independent: a process can exit
+    // cleanly while the task failed/blocked. Word the top line by the task
+    // outcome so we never imply a success the sub-session didn't claim.
+    const reported = event.reportedStatus?.toLowerCase()
     const summaryLine = event.reportedSummary ? `\nSummary: ${event.reportedSummary}` : ""
-    return `<actor-notification>\n${header} completed.\n${statusLine}${summaryLine}\nResult: ${event.result ?? "(no output)"}\n</actor-notification>`
+    const resultLine = `\nResult: ${event.result ?? "(no output)"}`
+    // success/partial (or absent → treat as a plain completion) keep the
+    // affirmative "completed" verb.
+    if (!reported || reported === "success" || reported === "partial") {
+      const statusLine = reported ? `\nStatus: ${reported}` : ""
+      return `<actor-notification>\n${header} completed.${statusLine}${summaryLine}${resultLine}\n</actor-notification>`
+    }
+    // failed/blocked → the sub-session ran to the end but the task did not
+    // succeed. State the outcome; never say "completed".
+    if (reported === "failed" || reported === "blocked") {
+      return `<actor-notification>\n${header} finished (status: ${reported}).${summaryLine}${resultLine}\n</actor-notification>`
+    }
+    // Any other reported value = unknown/unrecognized → neutral verb, and omit
+    // the misleading "Status: unknown" line entirely.
+    return `<actor-notification>\n${header} ended (status not reported).${summaryLine}${resultLine}\n</actor-notification>`
   }
   if (event.status === "failed") {
     return `<actor-notification>\n${header} failed.\nError: ${event.error ?? "unknown"}\n</actor-notification>`
@@ -49,8 +68,10 @@ export function renderActorNotification(event: {
 export type ParsedActorNotification = {
   // "stalled" is reserved for a future watchdog-emitted notification;
   // renderActorNotification never produces it today (only completed/failed/
-  // cancelled). The parse + card styling exist ahead of that producer.
-  status: "completed" | "failed" | "cancelled" | "stalled"
+  // cancelled lifecycle). The parse + card styling exist ahead of that producer.
+  // "ended" is the completed-lifecycle case where the sub-session's task
+  // outcome was not reported — neutral, neither success nor failure.
+  status: "completed" | "failed" | "cancelled" | "stalled" | "ended"
   description: string
   summary?: string
 }
@@ -61,12 +82,28 @@ export type ParsedActorNotification = {
 // Returns null for any text that isn't an actor notification.
 export function parseActorNotification(text: string): ParsedActorNotification | null {
   if (!text.trimStart().startsWith("<actor-notification>")) return null
-  const header = text.match(/Background actor "(.*?)" \(actor_id: [^)]*\)\s+(completed|failed|was cancelled|stalled)\b/)
+  // The verb reflects the *task* outcome, not just the process lifecycle:
+  //   completed                         → task succeeded / plain completion
+  //   finished (status: failed|blocked) → process ended cleanly, task not ok
+  //   ended (status not reported)       → process ended cleanly, outcome unknown
+  //   failed                            → the process itself failed
+  //   was cancelled / stalled           → cancelled / watchdog
+  const header = text.match(
+    /Background (?:sub-session|actor) "(.*?)" \(actor_id: [^)]*\)\s+(completed|finished|ended|failed|was cancelled|stalled)\b/,
+  )
   if (!header) return null
   const description = header[1]
   const verb = header[2]
   const status: ParsedActorNotification["status"] =
-    verb === "completed" ? "completed" : verb === "failed" ? "failed" : verb === "stalled" ? "stalled" : "cancelled"
+    verb === "completed"
+      ? "completed"
+      : verb === "finished" || verb === "failed"
+        ? "failed"
+        : verb === "ended"
+          ? "ended"
+          : verb === "stalled"
+            ? "stalled"
+            : "cancelled"
   // Prefer the most human-relevant one-liner: Summary > Result > Error.
   // renderActorNotification always emits the Summary line before the Result
   // line, so restrict the Summary match to the region before the first

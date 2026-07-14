@@ -1533,6 +1533,7 @@ function UserMessage(props: {
             if (s === "completed") return { icon: "✓", fg: theme.success, label: "completed" }
             if (s === "failed") return { icon: "✗", fg: theme.error, label: "failed" }
             if (s === "stalled") return { icon: "⏳", fg: theme.warning, label: "stalled" }
+            if (s === "ended") return { icon: "⊙", fg: theme.textMuted, label: "ended" }
             return { icon: "⊜", fg: theme.textMuted, label: "cancelled" }
           })
           return (
@@ -1540,7 +1541,7 @@ function UserMessage(props: {
               <text fg={theme.textMuted}>
                 <span style={{ bg: theme.backgroundElement, fg: style().fg, bold: true }}>
                   {" "}
-                  {style().icon} actor {style().label}{" "}
+                  {style().icon} sub-session {style().label}{" "}
                 </span>
                 <span style={{ fg: theme.text }}> {note().description}</span>
                 <Show when={note().summary}>
