@@ -41,7 +41,7 @@ export const dict: Record<string, string> = {
 
   // Tips
   "tui.tips.label": "Tip",
-  "tui.tips.plain_terminal": "We recommend using iTerm or the VS Code terminal",
+  "tui.tips.plain_terminal": "The default Mac terminal has rendering limitations. Please use iTerm2 or the VS Code terminal",
   "tui.tips.attach_file": "Type {highlight}@{/highlight} followed by a filename to fuzzy search and attach files",
   "tui.tips.shell_prefix":
     "Start a message with {highlight}!{/highlight} to run shell commands directly (e.g., {highlight}!ls -la{/highlight})",
@@ -59,7 +59,6 @@ export const dict: Record<string, string> = {
     "Run {highlight}/background{/highlight} to set a custom image as your home background",
   "tui.tips.undo": "Use {highlight}/undo{/highlight} to revert the last message and file changes",
   "tui.tips.redo": "Use {highlight}/redo{/highlight} to restore previously undone messages and file changes",
-  "tui.tips.share": "Run {highlight}/share{/highlight} to create a public link to your conversation at opencode.ai",
   "tui.tips.drag_drop": "Drag and drop images or PDFs into the terminal to add them as context",
   "tui.tips.paste_image": "Press {highlight}Ctrl+V{/highlight} to paste images from your clipboard (on macOS use Ctrl+V, not Cmd+V — the terminal intercepts Cmd+V)",
   "tui.tips.editor":
@@ -136,7 +135,6 @@ export const dict: Record<string, string> = {
   "tui.tips.upgrade": "Run {highlight}mimo upgrade{/highlight} to update to the latest version",
   "tui.tips.auth_list": "Run {highlight}mimo auth list{/highlight} to see all configured providers",
   "tui.tips.agent_create": "Run {highlight}mimo agent create{/highlight} for guided agent creation",
-  "tui.tips.github_trigger": "Use {highlight}/opencode{/highlight} in GitHub issues/PRs to trigger AI actions",
   "tui.tips.github_install": "Run {highlight}mimo github install{/highlight} to set up the GitHub workflow",
   "tui.tips.github_oc": "Comment {highlight}/oc{/highlight} on PR code lines for targeted code reviews",
   "tui.tips.theme_system": 'Use {highlight}"theme": "system"{/highlight} to match your terminal\'s colors',
@@ -166,7 +164,6 @@ export const dict: Record<string, string> = {
   "tui.tips.scroll_accel":
     "Enable {highlight}scroll_acceleration{/highlight} in {highlight}tui.json{/highlight} for smooth macOS-style scrolling",
   "tui.tips.username_toggle": "Toggle username display in chat via command palette ({highlight}Ctrl+P{/highlight})",
-  "tui.tips.docker": "Run {highlight}docker run -it --rm ghcr.io/anomalyco/opencode{/highlight} for containerized use",
   "tui.tips.zen": "Use {highlight}/connect{/highlight} with MiMo Code for curated, tested models",
   "tui.tips.agents_md": "Commit your project's {highlight}AGENTS.md{/highlight} file to Git for team sharing",
   "tui.tips.review": "Use {highlight}/review{/highlight} to review uncommitted changes, branches, or PRs",

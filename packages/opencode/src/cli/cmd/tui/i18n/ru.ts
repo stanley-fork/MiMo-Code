@@ -45,7 +45,7 @@ export const dict = {
 
   // Tips
   "tui.tips.label": "Подсказка",
-  "tui.tips.plain_terminal": "Рекомендуем использовать iTerm или терминал VS Code",
+  "tui.tips.plain_terminal": "Стандартный терминал Mac имеет ограничения рендеринга. Используйте iTerm2 или терминал VS Code",
   "tui.tips.attach_file":
     "Введите {highlight}@{/highlight}, а затем имя файла, чтобы выполнить нечёткий поиск и прикрепить файлы",
   "tui.tips.shell_prefix":
@@ -66,8 +66,6 @@ export const dict = {
     "Используйте {highlight}/undo{/highlight}, чтобы отменить последнее сообщение и изменения файлов",
   "tui.tips.redo":
     "Используйте {highlight}/redo{/highlight}, чтобы вернуть ранее отменённые сообщения и изменения",
-  "tui.tips.share":
-    "Выполните {highlight}/share{/highlight}, чтобы получить публичную ссылку на диалог на opencode.ai",
   "tui.tips.drag_drop": "Перетащите изображения или PDF в терминал, чтобы добавить их в контекст",
   "tui.tips.paste_image":
     "Нажмите {highlight}Ctrl+V{/highlight}, чтобы вставить изображение из буфера обмена (в macOS используйте Ctrl+V, а не Cmd+V — терминал перехватывает Cmd+V)",
@@ -184,8 +182,6 @@ export const dict = {
     "Выполните {highlight}mimo auth list{/highlight}, чтобы увидеть всех настроенных провайдеров",
   "tui.tips.agent_create":
     "Выполните {highlight}mimo agent create{/highlight}, чтобы создать агента в пошаговом режиме",
-  "tui.tips.github_trigger":
-    "Используйте {highlight}/opencode{/highlight} в issue/PR на GitHub, чтобы запускать AI-действия",
   "tui.tips.github_install":
     "Выполните {highlight}mimo github install{/highlight}, чтобы настроить GitHub-workflow",
   "tui.tips.github_oc":
@@ -237,8 +233,6 @@ export const dict = {
     "Включите {highlight}scroll_acceleration{/highlight} в {highlight}tui.json{/highlight} для плавной прокрутки",
   "tui.tips.username_toggle":
     "Переключайте отображение имени пользователя через палитру команд ({highlight}Ctrl+P{/highlight})",
-  "tui.tips.docker":
-    "Выполните {highlight}docker run -it --rm ghcr.io/anomalyco/opencode{/highlight} для контейнерного запуска",
   "tui.tips.zen":
     "Используйте {highlight}/connect{/highlight} с MiMo Code для подобранных и протестированных моделей",
   "tui.tips.agents_md":

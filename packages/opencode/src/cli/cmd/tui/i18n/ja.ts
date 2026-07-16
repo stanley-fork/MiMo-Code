@@ -45,7 +45,7 @@ export const dict = {
 
   // Tips
   "tui.tips.label": "ヒント",
-  "tui.tips.plain_terminal": "iTerm または VS Code ターミナルの使用をおすすめします",
+  "tui.tips.plain_terminal": "Mac 標準ターミナルは描画に制限があります。iTerm2 または VS Code ターミナルをご利用ください",
   "tui.tips.attach_file": "{highlight}@{/highlight} の後にファイル名を入力するとファジー検索でファイルを添付できます",
   "tui.tips.shell_prefix":
     "メッセージを {highlight}!{/highlight} で始めるとシェルコマンドを直接実行できます（例：{highlight}!ls -la{/highlight}）",
@@ -62,7 +62,6 @@ export const dict = {
   "tui.tips.background": "{highlight}/background{/highlight} を実行してホーム背景にお好みの画像を設定できます",
   "tui.tips.undo": "{highlight}/undo{/highlight} で直前のメッセージとファイル変更を取り消します",
   "tui.tips.redo": "{highlight}/redo{/highlight} で取り消したメッセージとファイル変更を復元します",
-  "tui.tips.share": "{highlight}/share{/highlight} を実行すると opencode.ai に会話の公開リンクを作成します",
   "tui.tips.drag_drop": "画像や PDF をターミナルにドラッグ＆ドロップしてコンテキストに追加できます",
   "tui.tips.paste_image": "{highlight}Ctrl+V{/highlight} でクリップボードの画像を貼り付けます（macOS では Cmd+V ではなく Ctrl+V を使用してください。Cmd+V は端末が横取りします）",
   "tui.tips.editor":
@@ -146,7 +145,6 @@ export const dict = {
   "tui.tips.upgrade": "{highlight}mimo upgrade{/highlight} で最新バージョンに更新します",
   "tui.tips.auth_list": "{highlight}mimo auth list{/highlight} で設定済みプロバイダを確認します",
   "tui.tips.agent_create": "{highlight}mimo agent create{/highlight} でガイド付きエージェント作成を行います",
-  "tui.tips.github_trigger": "GitHub の issue/PR で {highlight}/opencode{/highlight} を入力すると AI を起動します",
   "tui.tips.github_install": "{highlight}mimo github install{/highlight} で GitHub workflow を設定します",
   "tui.tips.github_oc": "PR のコード行に {highlight}/oc{/highlight} とコメントすると的を絞ったレビューが行われます",
   "tui.tips.theme_system": '{highlight}"theme": "system"{/highlight} でターミナルの配色に合わせます',
@@ -182,8 +180,6 @@ export const dict = {
     "{highlight}tui.json{/highlight} の {highlight}scroll_acceleration{/highlight} を有効にすると macOS 風のなめらかなスクロールになります",
   "tui.tips.username_toggle":
     "コマンドパレット（{highlight}Ctrl+P{/highlight}）でチャット内のユーザー名表示を切り替えます",
-  "tui.tips.docker":
-    "{highlight}docker run -it --rm ghcr.io/anomalyco/opencode{/highlight} でコンテナ版を実行できます",
   "tui.tips.zen": "MiMo Code と組み合わせて {highlight}/connect{/highlight} で厳選されたモデルを使えます",
   "tui.tips.agents_md": "プロジェクトの {highlight}AGENTS.md{/highlight} を Git にコミットしてチームで共有します",
   "tui.tips.review": "{highlight}/review{/highlight} で未コミット変更、ブランチ、PR をレビューします",

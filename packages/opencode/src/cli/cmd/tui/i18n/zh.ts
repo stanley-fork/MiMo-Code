@@ -45,7 +45,7 @@ export const dict = {
 
   // Tips
   "tui.tips.label": "提示",
-  "tui.tips.plain_terminal": "推荐使用iTerm或vscode终端",
+  "tui.tips.plain_terminal": "Mac 默认终端渲染受限，请改用 iTerm2 或 VS Code 终端",
   "tui.tips.attach_file": "输入 {highlight}@{/highlight} 后接文件名以模糊搜索并附加文件",
   "tui.tips.shell_prefix": "以 {highlight}!{/highlight} 开头可直接运行 shell 命令（例如 {highlight}!ls -la{/highlight}）",
   "tui.tips.tab_agent":
@@ -61,7 +61,6 @@ export const dict = {
   "tui.tips.background": "运行 {highlight}/background{/highlight} 设置自定义图片作为主页背景",
   "tui.tips.undo": "使用 {highlight}/undo{/highlight} 撤销最后一条消息及其文件改动",
   "tui.tips.redo": "使用 {highlight}/redo{/highlight} 恢复之前撤销的消息和文件改动",
-  "tui.tips.share": "运行 {highlight}/share{/highlight} 在 opencode.ai 上为你的对话生成公开链接",
   "tui.tips.drag_drop": "把图片或 PDF 拖入终端可作为上下文添加",
   "tui.tips.paste_image": "按 {highlight}Ctrl+V{/highlight} 把剪贴板中的图片粘贴到提示框（macOS 上请用 Ctrl+V，不要用 Cmd+V——Cmd+V 会被终端拦截）",
   "tui.tips.editor": "按 {highlight}Ctrl+X E{/highlight} 或 {highlight}/editor{/highlight} 在外部编辑器中编辑消息",
@@ -129,7 +128,6 @@ export const dict = {
   "tui.tips.upgrade": "运行 {highlight}mimo upgrade{/highlight} 升级到最新版本",
   "tui.tips.auth_list": "运行 {highlight}mimo auth list{/highlight} 查看所有已配置的 provider",
   "tui.tips.agent_create": "运行 {highlight}mimo agent create{/highlight} 引导式创建智能体",
-  "tui.tips.github_trigger": "在 GitHub issue/PR 中输入 {highlight}/opencode{/highlight} 触发 AI 操作",
   "tui.tips.github_install": "运行 {highlight}mimo github install{/highlight} 配置 GitHub workflow",
   "tui.tips.github_oc": "在 PR 代码行上评论 {highlight}/oc{/highlight} 进行针对性代码审查",
   "tui.tips.theme_system": '使用 {highlight}"theme": "system"{/highlight} 跟随终端配色',
@@ -159,7 +157,6 @@ export const dict = {
   "tui.tips.scroll_accel":
     "在 {highlight}tui.json{/highlight} 中开启 {highlight}scroll_acceleration{/highlight} 享受平滑滚动",
   "tui.tips.username_toggle": "通过命令面板（{highlight}Ctrl+P{/highlight}）切换聊天中用户名的显示",
-  "tui.tips.docker": "运行 {highlight}docker run -it --rm ghcr.io/anomalyco/opencode{/highlight} 使用容器化版本",
   "tui.tips.zen": "搭配 MiMo Code 使用 {highlight}/connect{/highlight} 选用经过测试的精选模型",
   "tui.tips.agents_md": "把项目里的 {highlight}AGENTS.md{/highlight} 提交到 Git 与团队共享",
   "tui.tips.review": "用 {highlight}/review{/highlight} 审阅未提交改动、分支或 PR",
