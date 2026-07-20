@@ -2125,6 +2125,11 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         }
 
         if (input.noReply === true) return message
+        // Short-circuit: when the message was dropped for being empty-content
+        // (hasSubstantiveContent returned false → parts: []), skip the model
+        // turn entirely. Running loop() here would produce a spurious assistant
+        // response with no user turn.
+        if (message.parts.length === 0) return message
         return yield* loop({ sessionID: input.sessionID, agentID: input.agentID ?? "main", task_id: input.task_id })
       },
     )

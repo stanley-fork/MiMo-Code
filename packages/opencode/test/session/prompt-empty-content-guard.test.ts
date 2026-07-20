@@ -1,6 +1,19 @@
 import { describe, expect, test } from "bun:test"
-import { PromptInput, hasSubstantiveContent } from "../../src/session/prompt"
-import type { MessageV2 } from "../../src/session/message-v2"
+import { Effect, Layer } from "effect"
+import { PromptInput, SessionPrompt, hasSubstantiveContent } from "../../src/session/prompt"
+import { Session } from "../../src/session"
+import { MessageV2 } from "../../src/session/message-v2"
+import { Instance } from "../../src/project/instance"
+import { Log } from "../../src/util"
+import { tmpdir } from "../fixture/fixture"
+
+void Log.init({ print: false })
+
+function run<A, E>(fx: Effect.Effect<A, E, SessionPrompt.Service | Session.Service>) {
+  return Effect.runPromise(
+    fx.pipe(Effect.scoped, Effect.provide(Layer.mergeAll(SessionPrompt.defaultLayer, Session.defaultLayer))),
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Schema: PromptInput.parts must have at least one element
@@ -173,5 +186,101 @@ describe("hasSubstantiveContent", () => {
         }),
       ]),
     ).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Integration: dropped empty message must NOT run a model turn
+// ---------------------------------------------------------------------------
+describe("prompt short-circuits on empty-content message", () => {
+  test("whitespace-only text skips loop and returns empty parts", async () => {
+    await using tmp = await tmpdir({ git: true })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: () =>
+        run(
+          Effect.gen(function* () {
+            const prompt = yield* SessionPrompt.Service
+            const sessions = yield* Session.Service
+            const session = yield* sessions.create({})
+
+            const msg = yield* prompt.prompt({
+              sessionID: session.id,
+              agent: "build",
+              parts: [{ type: "text", text: "   \n\t  " }],
+            })
+
+            // The returned message should have empty parts (dropped)
+            expect(msg.parts).toHaveLength(0)
+
+            // No assistant message should exist — loop() was never called
+            const msgs = yield* sessions.messages({ sessionID: session.id })
+            const assistants = msgs.filter((m) => m.info.role === "assistant")
+            expect(assistants).toHaveLength(0)
+
+            yield* sessions.remove(session.id)
+          }),
+        ),
+    })
+  })
+
+  test("ignored-only text skips loop and returns empty parts", async () => {
+    await using tmp = await tmpdir({ git: true })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: () =>
+        run(
+          Effect.gen(function* () {
+            const prompt = yield* SessionPrompt.Service
+            const sessions = yield* Session.Service
+            const session = yield* sessions.create({})
+
+            const msg = yield* prompt.prompt({
+              sessionID: session.id,
+              agent: "build",
+              parts: [{ type: "text", text: "real content", ignored: true }],
+            })
+
+            expect(msg.parts).toHaveLength(0)
+
+            const msgs = yield* sessions.messages({ sessionID: session.id })
+            const assistants = msgs.filter((m) => m.info.role === "assistant")
+            expect(assistants).toHaveLength(0)
+
+            yield* sessions.remove(session.id)
+          }),
+        ),
+    })
+  })
+
+  test("non-empty text still runs loop (normal path)", async () => {
+    await using tmp = await tmpdir({ git: true })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: () =>
+        run(
+          Effect.gen(function* () {
+            const prompt = yield* SessionPrompt.Service
+            const sessions = yield* Session.Service
+            const session = yield* sessions.create({})
+
+            // noReply: true so loop() is skipped, but parts should be non-empty
+            const msg = yield* prompt.prompt({
+              sessionID: session.id,
+              agent: "build",
+              noReply: true,
+              parts: [{ type: "text", text: "hello" }],
+            })
+
+            expect(msg.parts.length).toBeGreaterThan(0)
+            expect(msg.info.role).toBe("user")
+
+            yield* sessions.remove(session.id)
+          }),
+        ),
+    })
   })
 })
