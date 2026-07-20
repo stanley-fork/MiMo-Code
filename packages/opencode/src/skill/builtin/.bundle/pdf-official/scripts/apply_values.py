@@ -108,7 +108,7 @@ def _validate(fields, values: dict[str, Any]) -> list[str]:
 
 def _flatten_via_qpdf(target_pdf: Path) -> bool:
     """Flatten `target_pdf` in place. Returns True on success."""
-    qpdf = os.environ.get("MIMO_QPDF") or shutil.which("qpdf")  # MiMo Desktop bundled qpdf preferred
+    qpdf = os.environ.get("MIMO_QPDF") or shutil.which("qpdf")  # bundled qpdf via env, preferred
     if not qpdf:
         print("warning: qpdf not on PATH — cannot flatten", file=sys.stderr)
         return False

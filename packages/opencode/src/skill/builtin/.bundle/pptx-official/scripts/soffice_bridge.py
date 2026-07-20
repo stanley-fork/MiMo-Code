@@ -41,7 +41,7 @@ class BridgeError(RuntimeError):
 
 
 def _which_soffice() -> str:
-    bundled = os.environ.get("MIMO_SOFFICE")  # MiMo Desktop bundled runtime, preferred when present
+    bundled = os.environ.get("MIMO_SOFFICE")  # bundled runtime override, preferred when present
     if bundled and Path(bundled).is_file():
         return bundled
     for name in ("soffice", "libreoffice"):

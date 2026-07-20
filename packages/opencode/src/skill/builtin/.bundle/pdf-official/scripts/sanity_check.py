@@ -75,7 +75,7 @@ def _check_roundtrip(reader) -> Finding:
 
 
 def _check_qpdf(path: Path) -> Finding:
-    binary = os.environ.get("MIMO_QPDF") or shutil.which("qpdf")  # MiMo Desktop bundled qpdf preferred
+    binary = os.environ.get("MIMO_QPDF") or shutil.which("qpdf")  # bundled qpdf via env, preferred
     if not binary:
         return Finding("qpdf", Severity.INFO, "qpdf not on PATH (skipped)")
     proc = subprocess.run(

@@ -40,7 +40,7 @@ def locate_libreoffice() -> Path:
 
     Raises ``LibreOfficeNotFound`` with an install hint when nothing works.
     """
-    bundled = os.environ.get("MIMO_SOFFICE")  # MiMo Desktop bundled runtime, preferred when present
+    bundled = os.environ.get("MIMO_SOFFICE")  # bundled runtime override, preferred when present
     if bundled and Path(bundled).exists():
         return Path(bundled)
 
