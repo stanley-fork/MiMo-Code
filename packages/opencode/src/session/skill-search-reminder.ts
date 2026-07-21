@@ -63,13 +63,17 @@ export function skillSearchReminderForMessages(messages: ReminderMessage[]) {
 export function skillSearchReminderForSession(input: {
   session: { parentID?: string }
   agent: { name: string; mode: "subagent" | "primary" | "all" }
+  model: { id: string; name?: string; family?: string; api: { id: string } }
   messages: ReminderMessage[]
 }) {
   if (
     !Flag.MIMOCODE_ENABLE_SKILL_SEARCH_REMINDER ||
     input.session.parentID ||
     input.agent.mode === "subagent" ||
-    input.agent.name === "compose"
+    input.agent.name === "compose" ||
+    [input.model.id, input.model.api.id, input.model.name, input.model.family]
+      .filter((value) => value !== undefined)
+      .some((value) => /(^|[^a-z0-9])(claude|gpt)($|[^a-z0-9])/i.test(value))
   )
     return
   return skillSearchReminderForMessages(input.messages)

@@ -646,13 +646,14 @@ export const layer = Layer.effect(
     const insertReminders = Effect.fn("SessionPrompt.insertReminders")(function* (input: {
       messages: MessageV2.WithParts[]
       agent: Agent.Info
+      model: Provider.Model
       session: Session.Info
     }) {
       const userMessage = input.messages.findLast((msg) => msg.info.role === "user")
       if (!userMessage) return input.messages
 
-      // Search reminders apply only to direct user sessions. They advise the
-      // primary agent when to search; the model still decides whether to call.
+      // Search reminders apply only to eligible direct user sessions and models.
+      // They advise the primary agent when to search; the model still decides whether to call.
       const reminder = skillSearchReminderForSession(input)
       if (reminder) {
         const part = yield* sessions.updatePart({
@@ -3224,7 +3225,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           }
           const maxSteps = agent.steps ?? Infinity
           const isLastStep = step >= maxSteps
-          msgs = yield* insertReminders({ messages: msgs, agent, session })
+          msgs = yield* insertReminders({ messages: msgs, agent, model, session })
 
           const msg: MessageV2.Assistant = {
             id: MessageID.ascending(),

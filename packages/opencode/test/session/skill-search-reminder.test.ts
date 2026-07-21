@@ -7,6 +7,8 @@ import {
 import { Flag } from "../../src/flag/flag"
 
 describe("skillSearchReminder", () => {
+  const model = { id: "mimo-v2", name: "MiMo V2", api: { id: "mimo-v2" } }
+
   test("prompts skill search on the first user query", () => {
     const reminder = skillSearchReminder({ currentUserAt: 1_000 })
 
@@ -68,18 +70,34 @@ describe("skillSearchReminder", () => {
     Flag.MIMOCODE_ENABLE_SKILL_SEARCH_REMINDER = true
     try {
       expect(
-        skillSearchReminderForSession({ session: {}, agent: { name: "build", mode: "primary" }, messages }),
+        skillSearchReminderForSession({
+          session: {},
+          agent: { name: "build", mode: "primary" },
+          model,
+          messages,
+        }),
       ).toContain("first user query")
       expect(
-        skillSearchReminderForSession({ session: {}, agent: { name: "compose", mode: "primary" }, messages }),
+        skillSearchReminderForSession({
+          session: {},
+          agent: { name: "compose", mode: "primary" },
+          model,
+          messages,
+        }),
       ).toBeUndefined()
       expect(
-        skillSearchReminderForSession({ session: {}, agent: { name: "explore", mode: "subagent" }, messages }),
+        skillSearchReminderForSession({
+          session: {},
+          agent: { name: "explore", mode: "subagent" },
+          model,
+          messages,
+        }),
       ).toBeUndefined()
       expect(
         skillSearchReminderForSession({
           session: { parentID: "parent" },
           agent: { name: "build", mode: "primary" },
+          model,
           messages,
         }),
       ).toBeUndefined()
@@ -96,12 +114,45 @@ describe("skillSearchReminder", () => {
         skillSearchReminderForSession({
           session: {},
           agent: { name: "build", mode: "primary" },
+          model,
           messages: [
             {
               info: { role: "user", id: "user-1", time: { created: 1_000 } },
               parts: [{ type: "text", text: "Analyze a CSV" }],
             },
           ],
+        }),
+      ).toBeUndefined()
+    } finally {
+      Flag.MIMOCODE_ENABLE_SKILL_SEARCH_REMINDER = enabled
+    }
+  })
+
+  test("does not inject for Claude or GPT models", () => {
+    const enabled = Flag.MIMOCODE_ENABLE_SKILL_SEARCH_REMINDER
+    Flag.MIMOCODE_ENABLE_SKILL_SEARCH_REMINDER = true
+    const input = {
+      session: {},
+      agent: { name: "build", mode: "primary" as const },
+      messages: [
+        {
+          info: { role: "user", id: "user-1", time: { created: 1_000 } },
+          parts: [{ type: "text", text: "Analyze a CSV" }],
+        },
+      ],
+    }
+
+    try {
+      expect(
+        skillSearchReminderForSession({
+          ...input,
+          model: { id: "claude-sonnet-4", api: { id: "claude-sonnet-4" } },
+        }),
+      ).toBeUndefined()
+      expect(
+        skillSearchReminderForSession({
+          ...input,
+          model: { id: "custom-openai-model", api: { id: "gpt-5.4" } },
         }),
       ).toBeUndefined()
     } finally {
