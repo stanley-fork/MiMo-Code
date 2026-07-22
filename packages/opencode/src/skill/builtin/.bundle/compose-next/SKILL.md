@@ -5,7 +5,7 @@ description: Use for multi-step feature work, bug fixes, or refactors where requ
 
 # Compose Next
 
-Compact end-to-end contract for grill → spec → workspace → implement → verify → review → finalize → finish. One skill load, no internal skill hand-offs. Executable protocol only; rationale is not restated at execution time.
+Compact end-to-end contract for grill → spec → workspace → implement → verify → review → finalize → finish. One skill load, no internal skill hand-offs.
 
 ## Step 0 — Orient
 
@@ -31,8 +31,6 @@ Use the `question` tool for every user decision:
 - Do not ask for permission to continue when no decision remains.
 
 Split requests spanning independent subsystems before refining each part. Do not begin implementation until requirements and scope are settled.
-
-Use text, ASCII, tables, or Mermaid when they are enough to decide. If visual comparison requires rendering, create a temporary preview with available tools, ask before opening a browser, and remove temporary files afterward. When no user is available, remain text-only.
 
 ### Never-Ask handling
 
@@ -114,7 +112,7 @@ For failures, reproduce before editing and identify the root cause from errors, 
 
 ### Parallel work
 
-Dispatch independent tasks in parallel when isolation prevents collisions; keep tightly coupled work together. Give each subagent the worktree path, task, acceptance criteria, relevant spec sections, and required verification. Do not pass session history. Treat its report as a claim and inspect the resulting diff.
+Dispatch independent tasks in parallel when isolation prevents collisions; keep tightly coupled work together. Prefer giving parallel subagents disjoint file sets and keeping commits with the orchestrator. Give each subagent the worktree path, task, acceptance criteria, relevant spec sections, and required verification. Do not pass session history. Treat its report as a claim and inspect the resulting diff.
 
 Continue through tasks without routine approval pauses. Stop only for an unresolved product decision, a blocker that cannot be worked around, a destructive action requiring consent, or completion.
 
@@ -144,7 +142,7 @@ Require separate conclusions for:
 2. **Correctness** — logic, boundaries, error handling, regressions, and tests are sound, including issues outside the written spec.
 3. **Codebase consistency** — naming, structure, and local conventions match surrounding code.
 
-Classify unmet or unverifiable acceptance criteria and correctness bugs as critical. Fix critical findings, re-verify, and re-review affected areas. Reject incorrect findings with technical evidence.
+Classify unmet or unverifiable acceptance criteria and correctness bugs as critical. Fix critical findings, re-verify, and re-review affected areas. Reject incorrect findings with technical evidence. If the fix-and-re-review loop stops converging — repeated findings on the same area, or fixes that introduce new criticals — stop looping and report the impasse with the remaining findings instead of forcing a pass.
 
 For human review feedback, verify each item against the codebase, clarify ambiguous items before editing, and implement validated items one at a time with verification. Check actual usage before expanding an unused path, and surface conflicts with prior user decisions instead of silently complying.
 
