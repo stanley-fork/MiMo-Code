@@ -57,7 +57,6 @@ import { AppFileSystem } from "@mimo-ai/shared/filesystem"
 import { Bus } from "../bus"
 import { Agent } from "../agent/agent"
 import { Skill } from "../skill"
-import { isSkillSearchDisabled } from "../skill/search"
 import { Permission } from "@/permission"
 import { ActorRegistry } from "@/actor/registry"
 import { ActorWaiter } from "@/actor/waiter"
@@ -369,7 +368,6 @@ export const layer = Layer.effect(
       const useGPTTools =
         input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4")
       let filtered = (yield* all()).filter((tool) => {
-        if (tool.id === SkillSearchTool.id) return !isSkillSearchDisabled({ modelID: input.modelID })
         if (tool.id === CodeSearchTool.id || tool.id === WebSearchTool.id) {
           if (tool.id === WebSearchTool.id) {
             return (

@@ -19,7 +19,7 @@ afterEach(async () => {
 })
 
 describe("ToolRegistry.tools: invocation style resolution", () => {
-  it.live("masks skill_search for GPT and Claude models", () =>
+  it.live("exposes skill_search to GPT and Claude models", () =>
     provideTmpdirInstance(() =>
       Effect.gen(function* () {
         const reg = yield* ToolRegistry.Service
@@ -35,8 +35,8 @@ describe("ToolRegistry.tools: invocation style resolution", () => {
             })
             .pipe(Effect.map((tools) => tools.map((tool) => tool.id)))
 
-        expect(yield* ids("openai/gpt-5.4")).not.toContain("skill_search")
-        expect(yield* ids("anthropic/claude-sonnet-4-6")).not.toContain("skill_search")
+        expect(yield* ids("openai/gpt-5.4")).toContain("skill_search")
+        expect(yield* ids("anthropic/claude-sonnet-4-6")).toContain("skill_search")
         expect(yield* ids("mimo-v2")).toContain("skill_search")
       }),
     ),
