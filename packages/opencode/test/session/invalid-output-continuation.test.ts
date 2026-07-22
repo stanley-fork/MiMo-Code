@@ -46,7 +46,10 @@ function writeConfig(dir: string, origin: string) {
       provider: {
         alibaba: { options: { apiKey: "test-key", baseURL: `${origin}/v1` } },
       },
-      agent: { build: { model: "alibaba/qwen-plus" } },
+      agent: {
+        build: { model: "alibaba/qwen-plus" },
+        "checkpoint-writer": { model: "alibaba/qwen-plus" },
+      },
     }),
   )
 }
@@ -142,6 +145,70 @@ describe("invalid-output continuation — integration", () => {
               expect(result.info.role).toBe("assistant")
               if (result.info.role === "assistant") expect(result.info.error).toBeUndefined()
               expect(result.parts.some((p) => p.type === "text" && p.text === "final answer")).toBe(true)
+            }),
+          ),
+      })
+    } finally {
+      await stub.stop()
+    }
+  })
+
+  test("ordinary actor gets a parent-facing invalid-output reminder", async () => {
+    await using tmp = await tmpdir({ git: true })
+    const stub = startScriptedLLMServer([{ lines: emptyStopResponse() }, { lines: textStopResponse("actor result") }])
+    try {
+      await writeConfig(tmp.path, stub.origin)
+      await Instance.provide({
+        directory: tmp.path,
+        fn: () =>
+          run(
+            Effect.gen(function* () {
+              const sessions = yield* Session.Service
+              const prompt = yield* SessionPrompt.Service
+              const session = yield* sessions.create({ title: "invalid-actor" })
+              yield* prompt.prompt({
+                sessionID: session.id,
+                agent: "build",
+                agentID: "general-1",
+                parts: [{ type: "text", text: "Do delegated work." }],
+              })
+              const retry = JSON.stringify(stub.captures[1].messages)
+              expect(retry).toContain("parent agent")
+              expect(retry).not.toContain("final answer to the user")
+            }),
+          ),
+      })
+    } finally {
+      await stub.stop()
+    }
+  })
+
+  test("checkpoint-writer gets a scoped retry and converges on CHECKPOINT_COMPLETE", async () => {
+    await using tmp = await tmpdir({ git: true })
+    const stub = startScriptedLLMServer([
+      { lines: emptyStopResponse() },
+      { lines: textStopResponse("CHECKPOINT_COMPLETE") },
+    ])
+    try {
+      await writeConfig(tmp.path, stub.origin)
+      await Instance.provide({
+        directory: tmp.path,
+        fn: () =>
+          run(
+            Effect.gen(function* () {
+              const sessions = yield* Session.Service
+              const prompt = yield* SessionPrompt.Service
+              const session = yield* sessions.create({ title: "invalid-checkpoint-writer" })
+              const result = yield* prompt.prompt({
+                sessionID: session.id,
+                agent: "checkpoint-writer",
+                parts: [{ type: "text", text: "Update the checkpoint." }],
+              })
+              const retry = JSON.stringify(stub.captures[1].messages)
+              expect(retry).toContain("checkpoint writer")
+              expect(retry).toContain("CHECKPOINT_COMPLETE")
+              expect(retry).not.toContain("final answer to the user")
+              expect(result.parts.some((part) => part.type === "text" && part.text === "CHECKPOINT_COMPLETE")).toBe(true)
             }),
           ),
       })

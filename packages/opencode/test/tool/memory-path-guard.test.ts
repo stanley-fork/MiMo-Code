@@ -607,6 +607,39 @@ describe("assertAgentWriteSandbox", () => {
     ).not.toThrow()
   })
 
+  test("checkpoint-writer may write under the memory tree", () => {
+    expect(() =>
+      assertAgentWriteSandbox({
+        target: path.join(MEMORY_ROOT, "sessions", "sid", "checkpoint.md"),
+        agentName: "checkpoint-writer",
+        memoryRoot: MEMORY_ROOT,
+        worktree: WORKTREE,
+      }),
+    ).not.toThrow()
+  })
+
+  test("checkpoint-writer may NOT write a source file", () => {
+    expect(() =>
+      assertAgentWriteSandbox({
+        target: path.join(WORKTREE, "src", "index.ts"),
+        agentName: "checkpoint-writer",
+        memoryRoot: MEMORY_ROOT,
+        worktree: WORKTREE,
+      }),
+    ).toThrow(/may only write under the memory tree/)
+  })
+
+  test("checkpoint-writer may NOT write under <worktree>/.mimocode", () => {
+    expect(() =>
+      assertAgentWriteSandbox({
+        target: path.join(WORKTREE, ".mimocode", "skills", "unsafe", "SKILL.md"),
+        agentName: "checkpoint-writer",
+        memoryRoot: MEMORY_ROOT,
+        worktree: WORKTREE,
+      }),
+    ).toThrow(/may only write under the memory tree/)
+  })
+
   for (const agent of ["dream", "distill"] as const) {
     test(`${agent} may write under the memory tree`, () => {
       expect(() =>

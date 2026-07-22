@@ -59,6 +59,7 @@ import { TestLLMServer } from "../lib/llm-server"
 import { reply } from "../lib/llm-server"
 import { Inbox } from "../../src/inbox"
 import { inboxServiceRef } from "../../src/inbox/inbox-ref"
+import { Flag } from "../../src/flag/flag"
 
 afterEach(async () => {
   await Instance.disposeAll()
@@ -943,6 +944,38 @@ describe("Actor.spawn structured output (P3)", () => {
           expect(outcome.structured).toBeUndefined()
           expect(outcome.finalText).toContain("plain answer")
         }
+      }),
+      { git: true, config: providerCfg },
+    ),
+  )
+
+  it.live("exhausted checkpoint-writer invalid output produces a failed actor outcome", () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ llm }) {
+        const actor = yield* Actor.Service
+        const session = yield* Session.Service
+        const parent = yield* session.create({
+          title: "invalid actor output",
+          permission: [{ permission: "*", pattern: "*", action: "allow" }],
+        })
+
+        yield* llm.push(
+          ...Array.from({ length: Flag.MIMOCODE_INVALID_OUTPUT_CONTINUATION_LIMIT + 1 }, () => reply().stop()),
+        )
+
+        const result = yield* actor.spawn({
+          mode: "subagent",
+          sessionID: parent.id,
+          agentType: "checkpoint-writer",
+          task: "return a result",
+          context: "none",
+          tools: ["read"],
+          background: false,
+          model: ref,
+        })
+
+        const outcome = yield* Deferred.await(result.outcome)
+        expect(outcome.status).toBe("failure")
       }),
       { git: true, config: providerCfg },
     ),

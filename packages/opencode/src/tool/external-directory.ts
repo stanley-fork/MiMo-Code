@@ -107,24 +107,14 @@ export const assertWriteAllowed = Effect.fn("Tool.assertWriteAllowed")(function*
     }
   })()
 
-  // Hard write-sandbox for system agents (dream/distill): confine writes to the
-  // memory tree or <worktree>/.mimocode. Runs before the memory guard so a
-  // sandboxed agent writing an arbitrary source path is rejected up front.
-  const worktree = (() => {
-    try {
-      return Instance.worktree
-    } catch {
-      return undefined
-    }
-  })()
-  if (worktree) {
-    assertAgentWriteSandbox({
-      target,
-      agentName: ctx.agent,
-      memoryRoot: path.join(Global.Path.data, "memory"),
-      worktree,
-    })
-  }
+  // System-agent write sandbox: checkpoint-writer is memory-only, while
+  // dream/distill may also write <worktree>/.mimocode.
+  assertAgentWriteSandbox({
+    target,
+    agentName: ctx.agent,
+    memoryRoot: path.join(Global.Path.data, "memory"),
+    worktree: (yield* InstanceState.context).worktree,
+  })
 
   assertMemoryWriteAllowed({
     target,

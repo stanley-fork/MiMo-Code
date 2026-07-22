@@ -4,17 +4,14 @@ import type { SessionID } from "../session/schema"
 
 const VALID_SCOPES = ["global", "projects", "sessions"] as const
 
-/** Agents confined to a write sandbox: they may only mutate files under the
- *  memory tree or the project's `.mimocode/` dir. Matches their stated purpose
- *  (dream: consolidate memory; distill: package skills/agents/commands under
- *  .mimocode). Everything else — source files, arbitrary worktree paths — is
- *  denied at the write gate, independent of their `write`/`edit` permission. */
+/** Agents that may write memory or the project's `.mimocode/` directory. The
+ *  checkpoint writer has a stricter memory-only policy below. */
 const WRITE_SANDBOXED_AGENTS: ReadonlySet<string> = new Set(["dream", "distill"])
 
 /**
- * Hard write-boundary for sandboxed system agents (dream/distill). Throws if
- * `agentName` is sandboxed and `target` is neither under the memory tree nor
- * under `<worktree>/.mimocode/`. Pure — does not touch the filesystem.
+ * Hard write-boundary for sandboxed system agents. checkpoint-writer is
+ * memory-only; dream/distill may also write under `<worktree>/.mimocode/`.
+ * Pure — does not touch the filesystem.
  *
  * This is enforced in the single write gate (assertWriteAllowed), so it cannot
  * be bypassed by a widened `write`/`edit` permission or a new write tool: those
@@ -29,8 +26,6 @@ export function assertAgentWriteSandbox(input: {
   memoryRoot: string
   worktree: string
 }): void {
-  if (!WRITE_SANDBOXED_AGENTS.has(input.agentName)) return
-
   // Resolve here rather than trusting the caller: write.ts/edit.ts pass an
   // absolute file_path THROUGH unnormalized, so a target like
   // `<worktree>/.mimocode/../src/x.ts` would string-prefix-match `.mimocode`
@@ -39,6 +34,17 @@ export function assertAgentWriteSandbox(input: {
   // callers.) The roots are resolved too so the comparison is apples-to-apples.
   const target = path.resolve(input.target)
   const memoryRoot = path.resolve(input.memoryRoot)
+  if (input.agentName === "checkpoint-writer") {
+    if (pathContains(memoryRoot, target)) return
+    throw new Error(
+      `Agent '${input.agentName}' may only write under the memory tree.\n` +
+        `  memory: ${memoryRoot}\n` +
+        `You attempted: ${input.target}.`,
+    )
+  }
+
+  if (!WRITE_SANDBOXED_AGENTS.has(input.agentName)) return
+
   const dotDir = path.resolve(input.worktree, ".mimocode")
   if (pathContains(memoryRoot, target) || pathContains(dotDir, target)) return
 

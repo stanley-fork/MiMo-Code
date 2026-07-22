@@ -273,6 +273,9 @@ export const layer = Layer.effect(
       // last text part (often a pre-tool-call preamble) is dropped to avoid
       // duplicating the result downstream. See spec §5.2.
       const info = (result as MessageV2.WithParts | undefined)?.info
+      if (info?.role === "assistant" && info.error) {
+        return yield* Effect.fail(new Error(`Actor assistant failed: ${info.error.name}`))
+      }
       const structured = info?.role === "assistant" ? info.structured : undefined
       const finalText =
         structured !== undefined
