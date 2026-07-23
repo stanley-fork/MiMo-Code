@@ -53,6 +53,8 @@ export const dict: Record<string, string> = {
     "Run {highlight}/dark{/highlight} for dark mode or {highlight}/light{/highlight} for light mode",
   "tui.tips.doc": "Run {highlight}/doc{/highlight} to open the user documentation",
   "tui.tips.free_models": "Free models are available for a limited time — try them now!",
+  "tui.tips.free_api_sunset":
+    "The free MiMoCode API is no longer available. Run {highlight}/login{/highlight}, or configure a third-party API to continue using MiMoCode.",
   "tui.tips.multi_skills":
     "Combine multiple {highlight}/skill-name{/highlight} triggers in a single message to use several skills together",
   "tui.tips.background":

@@ -57,6 +57,8 @@ export const dict = {
     "{highlight}/dark{/highlight} でダークモード、{highlight}/light{/highlight} でライトモードに切り替えます",
   "tui.tips.doc": "{highlight}/doc{/highlight} を実行してユーザードキュメントを開きます",
   "tui.tips.free_models": "期間限定で無料モデルを提供中。今すぐお試しください！",
+  "tui.tips.free_api_sunset":
+    "MiMoCode の無料 API は提供を終了しました。{highlight}/login{/highlight} でログインするか、サードパーティ API を設定してから MiMoCode をご利用ください。",
   "tui.tips.multi_skills":
     "1 つのメッセージ内で複数の {highlight}/skill-name{/highlight} を組み合わせて、複数の Skill を同時に使えます",
   "tui.tips.background": "{highlight}/background{/highlight} を実行してホーム背景にお好みの画像を設定できます",

@@ -1,8 +1,10 @@
-import { createMemo, createSignal, For, onCleanup } from "solid-js"
+import { createEffect, createMemo, createSignal, For, onCleanup } from "solid-js"
 import { DEFAULT_THEMES, useTheme } from "@tui/context/theme"
 import { useLanguage } from "@tui/context/language"
 import { useLocal } from "@tui/context/local"
+import { useSync } from "@tui/context/sync"
 import { Flag } from "@/flag/flag"
+import { createFreeApiSunsetSignal } from "@tui/util/free-api-sunset"
 
 const themeCount = Object.keys(DEFAULT_THEMES).length
 const TIP_ROTATION_MS = 10_000
@@ -12,6 +14,7 @@ const COMPOSE_LOCK_TIP = "tui.tips.compose_next"
 // Promote recently-added or critical features so users discover them.
 // Tips not listed here use the default weight of 1.
 const PRIORITY_WEIGHTS: Record<string, number> = {
+  "tui.tips.free_api_sunset": 100,
   "tui.tips.multi_skills": 60,
   "tui.tips.free_models": 50,
   "tui.tips.background": 50,
@@ -131,10 +134,21 @@ const TIP_KEYS = [
 // only when the experiment is enabled; otherwise use the variant without it so
 // we never point users at an agent that isn't reachable. The platform-specific
 // suspend tip is always appended last.
-export function buildTipKeys(orchestratorEnabled: boolean, platform: NodeJS.Platform): readonly string[] {
-  const tabAgentKey = orchestratorEnabled ? "tui.tips.tab_agent_orchestrator" : "tui.tips.tab_agent"
-  const suspendKey = platform === "win32" ? "tui.tips.suspend.win" : "tui.tips.suspend.unix"
-  return [...TIP_KEYS, tabAgentKey, suspendKey]
+export function buildTipKeys(options: {
+  orchestratorEnabled: boolean
+  platform: NodeJS.Platform
+  sunset: boolean
+  xiaomiConnected: boolean
+}): readonly string[] {
+  const tabAgentKey = options.orchestratorEnabled ? "tui.tips.tab_agent_orchestrator" : "tui.tips.tab_agent"
+  const suspendKey = options.platform === "win32" ? "tui.tips.suspend.win" : "tui.tips.suspend.unix"
+  const keys = options.sunset ? TIP_KEYS.filter((key) => key !== "tui.tips.free_models") : TIP_KEYS
+  return [
+    ...keys,
+    ...(options.sunset && !options.xiaomiConnected ? ["tui.tips.free_api_sunset"] : []),
+    tabAgentKey,
+    suspendKey,
+  ]
 }
 
 type TipPart = { text: string; highlight: boolean }
@@ -178,9 +192,22 @@ export function Tips() {
   const theme = useTheme().theme
   const lang = useLanguage()
   const local = useLocal()
-  const allKeys = buildTipKeys(Flag.MIMOCODE_EXPERIMENTAL_ORCHESTRATOR, process.platform)
-  const [key, setKey] = createSignal(pickWeighted(allKeys))
-  const interval = setInterval(() => setKey(pickWeighted(allKeys)), TIP_ROTATION_MS)
+  const sync = useSync()
+  const sunset = createFreeApiSunsetSignal()
+  const allKeys = createMemo(() =>
+    buildTipKeys({
+      orchestratorEnabled: Flag.MIMOCODE_EXPERIMENTAL_ORCHESTRATOR,
+      platform: process.platform,
+      sunset: sunset(),
+      xiaomiConnected: sync.data.provider_next.connected.includes("xiaomi"),
+    }),
+  )
+  const [key, setKey] = createSignal(pickWeighted(allKeys()))
+  createEffect(() => {
+    const keys = allKeys()
+    if (!keys.includes(key())) setKey(pickWeighted(keys))
+  })
+  const interval = setInterval(() => setKey(pickWeighted(allKeys())), TIP_ROTATION_MS)
   onCleanup(() => clearInterval(interval))
   // Display override: while the current agent is Compose, show the compose-next
   // deprecation tip in place of whatever the rotation currently holds. The

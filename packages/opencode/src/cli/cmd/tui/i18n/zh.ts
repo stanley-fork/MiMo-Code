@@ -56,6 +56,8 @@ export const dict = {
     "运行 {highlight}/dark{/highlight} 切换到深色模式，{highlight}/light{/highlight} 切换到浅色模式",
   "tui.tips.doc": "运行 {highlight}/doc{/highlight} 打开使用文档",
   "tui.tips.free_models": "限时提供免费模型中，立即体验！",
+  "tui.tips.free_api_sunset":
+    "MiMoCode 免费 API 已下线。请运行 {highlight}/login{/highlight} 登录，或配置第三方 API 后再使用 MiMoCode。",
   "tui.tips.multi_skills":
     "在同一条消息中输入多个 {highlight}/skill-name{/highlight} 可以同时组合使用多个 Skills",
   "tui.tips.background": "运行 {highlight}/background{/highlight} 设置自定义图片作为主页背景",
