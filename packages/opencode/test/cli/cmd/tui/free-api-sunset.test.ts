@@ -2,21 +2,12 @@ import { describe, expect, mock, test } from "bun:test"
 import { createRoot, type Accessor } from "solid-js"
 import {
   FREE_API_SUNSET_AT,
-  classifyPromptSubmission,
   createFreeApiSunsetSignal,
   freeApiModelNameKey,
   isFreeApiModel,
   isFreeApiSunset,
-  isModelBackedPromptSubmission,
   shouldBlockFreeApiRequest,
 } from "../../../../src/cli/cmd/tui/util/free-api-sunset"
-import { dict as en } from "../../../../src/cli/cmd/tui/i18n/en"
-import { dict as es } from "../../../../src/cli/cmd/tui/i18n/es"
-import { dict as fr } from "../../../../src/cli/cmd/tui/i18n/fr"
-import { dict as ja } from "../../../../src/cli/cmd/tui/i18n/ja"
-import { dict as ru } from "../../../../src/cli/cmd/tui/i18n/ru"
-import { dict as zh } from "../../../../src/cli/cmd/tui/i18n/zh"
-import { dict as zht } from "../../../../src/cli/cmd/tui/i18n/zht"
 
 describe("free API sunset", () => {
   test("uses the exact UTC threshold", () => {
@@ -38,62 +29,16 @@ describe("free API sunset", () => {
 
   test("blocks model-backed requests after sunset", () => {
     const model = { providerID: "mimo", modelID: "mimo-auto" }
-    const request = classifyPromptSubmission({ input: "hello", mode: "normal", clientSlash: false })
-    expect(shouldBlockFreeApiRequest(model, { now: FREE_API_SUNSET_AT - 1, request })).toBe(false)
-    expect(shouldBlockFreeApiRequest(model, { now: FREE_API_SUNSET_AT, request })).toBe(true)
-    expect(shouldBlockFreeApiRequest(model, { now: FREE_API_SUNSET_AT + 1, request })).toBe(true)
-    expect(
-      shouldBlockFreeApiRequest({ providerID: "xiaomi", modelID: "mimo-auto" }, { now: FREE_API_SUNSET_AT, request }),
-    ).toBe(false)
-    expect(
-      shouldBlockFreeApiRequest({ providerID: "third-party", modelID: "mimo-auto" }, { now: FREE_API_SUNSET_AT, request }),
-    ).toBe(false)
-    expect(
-      shouldBlockFreeApiRequest({ providerID: "mimo", modelID: "other" }, { now: FREE_API_SUNSET_AT, request }),
-    ).toBe(false)
-  })
-
-  test("classifies client-side slash and shell before model-backed requests", () => {
-    expect(classifyPromptSubmission({ input: "/login", mode: "normal", clientSlash: true })).toBe("client-slash")
-    expect(classifyPromptSubmission({ input: "/connect", mode: "normal", clientSlash: true })).toBe("client-slash")
-    expect(classifyPromptSubmission({ input: "/theme", mode: "normal", clientSlash: true })).toBe("client-slash")
-    expect(classifyPromptSubmission({ input: "pwd", mode: "shell", clientSlash: false })).toBe("shell")
-    expect(classifyPromptSubmission({ input: "hello", mode: "normal", clientSlash: false })).toBe("model")
-    expect(classifyPromptSubmission({ input: "/review", mode: "normal", clientSlash: false })).toBe("model")
-    expect(classifyPromptSubmission({ input: "/btw", mode: "normal", clientSlash: true })).toBe("model")
-    expect(classifyPromptSubmission({ input: "/btw question", mode: "normal", clientSlash: false })).toBe("model")
-  })
-
-  test("uses the same model-backed classification for sunset and agreement gates", () => {
-    const model = { providerID: "mimo", modelID: "mimo-auto" }
-    const clientSlash = classifyPromptSubmission({ input: "/login", mode: "normal", clientSlash: true })
-    const shell = classifyPromptSubmission({ input: "pwd", mode: "shell", clientSlash: false })
-    const btw = classifyPromptSubmission({ input: "/btw", mode: "normal", clientSlash: true })
-
-    expect(shouldBlockFreeApiRequest(model, { now: FREE_API_SUNSET_AT, request: clientSlash })).toBe(false)
-    expect(shouldBlockFreeApiRequest(model, { now: FREE_API_SUNSET_AT, request: shell })).toBe(false)
-    expect(shouldBlockFreeApiRequest(model, { now: FREE_API_SUNSET_AT, request: btw })).toBe(true)
-    expect(isModelBackedPromptSubmission(clientSlash)).toBe(false)
-    expect(isModelBackedPromptSubmission(shell)).toBe(false)
-    expect(isModelBackedPromptSubmission(btw)).toBe(true)
+    expect(shouldBlockFreeApiRequest(model, { sunset: false })).toBe(false)
+    expect(shouldBlockFreeApiRequest(model, { sunset: true })).toBe(true)
+    expect(shouldBlockFreeApiRequest(model, { sunset: true, localOnly: true })).toBe(false)
+    expect(shouldBlockFreeApiRequest(model, { sunset: true, shell: true })).toBe(false)
+    expect(shouldBlockFreeApiRequest({ providerID: "xiaomi", modelID: "mimo-auto" }, { sunset: true })).toBe(false)
   })
 
   test("switches the model display key at sunset", () => {
-    expect(freeApiModelNameKey(isFreeApiSunset(FREE_API_SUNSET_AT - 1))).toBe("tui.model.mimo_auto.name")
-    expect(freeApiModelNameKey(isFreeApiSunset(FREE_API_SUNSET_AT))).toBe("tui.model.mimo_auto.sunset_name")
-    expect(freeApiModelNameKey(isFreeApiSunset(FREE_API_SUNSET_AT + 1))).toBe("tui.model.mimo_auto.sunset_name")
-  })
-
-  test("all TUI locales define the post-sunset model name", () => {
-    expect([en, es, fr, ja, ru, zh, zht].map((locale) => locale["tui.model.mimo_auto.sunset_name"])).toEqual([
-      "MiMo Auto (MiMo-V2.5)",
-      "MiMo Auto (MiMo-V2.5)",
-      "MiMo Auto (MiMo-V2.5)",
-      "MiMo Auto（MiMo-V2.5）",
-      "MiMo Auto (MiMo-V2.5)",
-      "MiMo Auto（MiMo-V2.5）",
-      "MiMo Auto（MiMo-V2.5）",
-    ])
+    expect(freeApiModelNameKey(false)).toBe("tui.model.mimo_auto.name")
+    expect(freeApiModelNameKey(true)).toBe("tui.model.mimo_auto.sunset_name")
   })
 
   test("schedules one reactive switch before the threshold", () => {

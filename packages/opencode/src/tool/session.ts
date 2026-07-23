@@ -61,7 +61,7 @@ export function forkQuery(deps: {
   sessions: Session.Interface
   provider: Provider.Interface
   actor: ActorInterface
-}, targetSessionID: SessionID, question: string) {
+}, targetSessionID: SessionID, question: string, selectedModel?: { providerID: ProviderID; modelID: ModelID }) {
   return Effect.gen(function* () {
     // a. Resolve the target's persisted history and the slice to snapshot.
     // A child created via `session create` runs as a PEER actor whose actorID
@@ -96,7 +96,7 @@ export function forkQuery(deps: {
 
     // Model for the prefix + the fork's LLM call: the project default. The prefix
     // captor needs a concrete provider/model; the answer quality is the default's.
-    const model = yield* deps.provider.defaultModel()
+    const model = selectedModel ?? (yield* deps.provider.defaultModel())
     const providerID = model.providerID as ProviderID
     const modelID = model.modelID as ModelID
 

@@ -98,6 +98,12 @@ import { DialogGoUpsell } from "../../component/dialog-go-upsell"
 import { DialogTokenPlan } from "../../component/dialog-token-plan"
 import { SessionRetry } from "@/session/retry"
 import { getRevertDiffFiles } from "../../util/revert-diff"
+import {
+  createFreeApiSunsetSignal,
+  freeApiModelNameKey,
+  isFreeApiModel,
+  shouldBlockFreeApiRequest,
+} from "@tui/util/free-api-sunset"
 
 addDefaultParsers(parsers.parsers)
 
@@ -121,6 +127,7 @@ const context = createContext<{
   providers: () => ReadonlyMap<string, Provider>
   sync: ReturnType<typeof useSync>
   tui: ReturnType<typeof useTuiConfig>
+  freeApiSunset: () => boolean
 }>()
 
 function use() {
@@ -159,6 +166,7 @@ export function Session() {
   const kv = useKV()
   const { theme } = useTheme()
   const promptRef = usePromptRef()
+  const freeApiSunset = createFreeApiSunsetSignal()
   const session = createMemo(() => sync.session.get(route.sessionID))
   const currentAgentID = useCurrentAgentID()
   const actors = createMemo(() => sync.data.actor[route.sessionID] ?? [])
@@ -576,6 +584,14 @@ export function Session() {
           })
           return
         }
+        if (shouldBlockFreeApiRequest(selectedModel)) {
+          void DialogAlert.show(
+            dialog,
+            t("tui.dialog.free_api_sunset.title"),
+            t("tui.dialog.free_api_sunset.message"),
+          )
+          return
+        }
         void sdk.client.session.summarize({
           sessionID: route.sessionID,
           modelID: selectedModel.modelID,
@@ -593,6 +609,23 @@ export function Session() {
         name: "btw",
       },
       onSelect: async (dialog) => {
+        const selectedModel = local.model.current()
+        if (!selectedModel) {
+          toast.show({
+            variant: "warning",
+            message: "Connect a provider to ask a side question",
+            duration: 3000,
+          })
+          return
+        }
+        if (shouldBlockFreeApiRequest(selectedModel)) {
+          await DialogAlert.show(
+            dialog,
+            t("tui.dialog.free_api_sunset.title"),
+            t("tui.dialog.free_api_sunset.message"),
+          )
+          return
+        }
         // Ask a read-only side question via fork-query. Keep the prompt dialog
         // mounted in a busy/spinner state across the (multi-second) blocking
         // `ask` so the user gets immediate feedback, then swap in the answer.
@@ -602,8 +635,22 @@ export function Session() {
           dialog,
           "/btw",
           async (question, active) => {
+            if (shouldBlockFreeApiRequest(selectedModel)) {
+              if (active())
+                await DialogAlert.show(
+                  dialog,
+                  t("tui.dialog.free_api_sunset.title"),
+                  t("tui.dialog.free_api_sunset.message"),
+                )
+              return
+            }
             const res = await sdk.client.session
-              .ask({ sessionID: route.sessionID, question })
+              .ask({
+                sessionID: route.sessionID,
+                question,
+                providerID: selectedModel.providerID,
+                modelID: selectedModel.modelID,
+              })
               .catch((error) => {
                 if (active())
                   toast.show({
@@ -1234,6 +1281,7 @@ export function Session() {
         providers,
         sync,
         tui: tuiConfig,
+        freeApiSunset,
       }}
     >
       <box flexDirection="row">
@@ -1630,8 +1678,8 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
   const [copyHover, setCopyHover] = createSignal(false)
   const messages = createMemo(() => sync.data.message[props.message.sessionID]?.[props.message.agentID ?? "main"] ?? [])
   const model = createMemo(() =>
-    props.message.modelID === "mimo-auto"
-      ? t("tui.model.mimo_auto.name")
+    isFreeApiModel({ providerID: props.message.providerID, modelID: props.message.modelID })
+      ? t(freeApiModelNameKey(ctx.freeApiSunset()))
       : Model.name(ctx.providers(), props.message.providerID, props.message.modelID),
   )
 

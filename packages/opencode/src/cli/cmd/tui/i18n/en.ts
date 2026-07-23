@@ -54,7 +54,7 @@ export const dict: Record<string, string> = {
   "tui.tips.doc": "Run {highlight}/doc{/highlight} to open the user documentation",
   "tui.tips.free_models": "Free models are available for a limited time — try them now!",
   "tui.tips.free_api_sunset":
-    "The free MiMoCode API is no longer available. Run {highlight}/login{/highlight}, or configure a third-party API to continue using MiMoCode.",
+    "The free API service has ended. Run {highlight}/login{/highlight} to sign in. Subscribe to the MiMo Token Plan or configure a third-party API to use MiMo Code.",
   "tui.tips.multi_skills":
     "Combine multiple {highlight}/skill-name{/highlight} triggers in a single message to use several skills together",
   "tui.tips.background":
@@ -321,13 +321,14 @@ export const dict: Record<string, string> = {
   "tui.dialog.agreement.title": "Terms & Privacy",
   "tui.dialog.agreement.message": "Please review and agree to continue.",
   "tui.dialog.agreement.confirm": "Agree & Continue",
-  "tui.dialog.free_api_sunset.title": "MiMoCode free API is no longer available",
-  "tui.dialog.free_api_sunset.message": "Run /login to sign in, or configure a third-party API before using MiMoCode again.",
+  "tui.dialog.free_api_sunset.title": "Free API service ended",
+  "tui.dialog.free_api_sunset.message":
+    "Run /login to sign in. Subscribe to the MiMo Token Plan or configure a third-party API to use MiMo Code.",
   "tui.command.consent.revoke.title": "Revoke free-model agreement",
   "tui.consent.revoked": "Free-model agreement revoked — you'll be asked to agree again",
   "tui.dialog.select.placeholder": "Search",
   "tui.dialog.model.login_hint": "Tip: run /login to sign in before switching models",
-  "tui.model.mimo_auto.name": "MiMo Auto (MiMo-V2.5, limited-time free)",
+  "tui.model.mimo_auto.name": "MiMo Auto (MiMo-V2.5 free until Jul 26, 18:00 · UTC+8)",
   "tui.model.mimo_auto.sunset_name": "MiMo Auto (MiMo-V2.5)",
   "tui.dialog.token_plan.title": "Subscribe to a Token Plan or wait in queue",
   "tui.dialog.token_plan.line1": "In free mode, requests are currently queued. For stable, high-quality service,",

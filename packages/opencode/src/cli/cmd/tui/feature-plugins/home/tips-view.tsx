@@ -14,9 +14,9 @@ const COMPOSE_LOCK_TIP = "tui.tips.compose_next"
 // Promote recently-added or critical features so users discover them.
 // Tips not listed here use the default weight of 1.
 const PRIORITY_WEIGHTS: Record<string, number> = {
-  "tui.tips.free_api_sunset": 100,
   "tui.tips.multi_skills": 60,
   "tui.tips.free_models": 50,
+  "tui.tips.free_api_sunset": 50,
   "tui.tips.background": 50,
   "tui.tips.login": 40,
   "tui.tips.theme_mode": 40,
@@ -134,18 +134,17 @@ const TIP_KEYS = [
 // only when the experiment is enabled; otherwise use the variant without it so
 // we never point users at an agent that isn't reachable. The platform-specific
 // suspend tip is always appended last.
-export function buildTipKeys(options: {
-  orchestratorEnabled: boolean
-  platform: NodeJS.Platform
-  sunset: boolean
-  xiaomiConnected: boolean
-}): readonly string[] {
-  const tabAgentKey = options.orchestratorEnabled ? "tui.tips.tab_agent_orchestrator" : "tui.tips.tab_agent"
-  const suspendKey = options.platform === "win32" ? "tui.tips.suspend.win" : "tui.tips.suspend.unix"
-  const keys = options.sunset ? TIP_KEYS.filter((key) => key !== "tui.tips.free_models") : TIP_KEYS
+export function buildTipKeys(
+  orchestratorEnabled: boolean,
+  platform: NodeJS.Platform,
+  freeApiSunset = false,
+  xiaomiAuthenticated = false,
+): readonly string[] {
+  const tabAgentKey = orchestratorEnabled ? "tui.tips.tab_agent_orchestrator" : "tui.tips.tab_agent"
+  const suspendKey = platform === "win32" ? "tui.tips.suspend.win" : "tui.tips.suspend.unix"
   return [
-    ...keys,
-    ...(options.sunset && !options.xiaomiConnected ? ["tui.tips.free_api_sunset"] : []),
+    ...TIP_KEYS.filter((key) => !freeApiSunset || key !== "tui.tips.free_models"),
+    ...(freeApiSunset && !xiaomiAuthenticated ? ["tui.tips.free_api_sunset"] : []),
     tabAgentKey,
     suspendKey,
   ]
@@ -193,19 +192,19 @@ export function Tips() {
   const lang = useLanguage()
   const local = useLocal()
   const sync = useSync()
-  const sunset = createFreeApiSunsetSignal()
+  const freeApiSunset = createFreeApiSunsetSignal()
   const allKeys = createMemo(() =>
-    buildTipKeys({
-      orchestratorEnabled: Flag.MIMOCODE_EXPERIMENTAL_ORCHESTRATOR,
-      platform: process.platform,
-      sunset: sunset(),
-      xiaomiConnected: sync.data.provider_next.connected.includes("xiaomi"),
-    }),
+    buildTipKeys(
+      Flag.MIMOCODE_EXPERIMENTAL_ORCHESTRATOR,
+      process.platform,
+      freeApiSunset(),
+      sync.data.provider_next.authenticated.includes("xiaomi"),
+    ),
   )
   const [key, setKey] = createSignal(pickWeighted(allKeys()))
   createEffect(() => {
-    const keys = allKeys()
-    if (!keys.includes(key())) setKey(pickWeighted(keys))
+    if (allKeys().includes(key())) return
+    setKey(pickWeighted(allKeys()))
   })
   const interval = setInterval(() => setKey(pickWeighted(allKeys())), TIP_ROTATION_MS)
   onCleanup(() => clearInterval(interval))

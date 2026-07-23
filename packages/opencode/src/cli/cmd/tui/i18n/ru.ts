@@ -59,7 +59,7 @@ export const dict = {
   "tui.tips.doc": "Выполните {highlight}/doc{/highlight}, чтобы открыть пользовательскую документацию",
   "tui.tips.free_models": "Бесплатные модели доступны ограниченное время — попробуйте их сейчас!",
   "tui.tips.free_api_sunset":
-    "Бесплатный API MiMoCode больше недоступен. Выполните {highlight}/login{/highlight} или настройте сторонний API, чтобы продолжить работу с MiMoCode.",
+    "Сервис бесплатного API завершён. Выполните {highlight}/login{/highlight}, чтобы войти. Оформите подписку на MiMo Token Plan или настройте сторонний API для использования MiMo Code.",
   "tui.tips.multi_skills":
     "Комбинируйте несколько {highlight}/skill-name{/highlight} в одном сообщении, чтобы использовать несколько Skills одновременно",
   "tui.tips.background":
@@ -390,13 +390,14 @@ export const dict = {
   "tui.dialog.agreement.title": "Условия и конфиденциальность",
   "tui.dialog.agreement.message": "Ознакомьтесь и примите их, чтобы продолжить.",
   "tui.dialog.agreement.confirm": "Принять и продолжить",
-  "tui.dialog.free_api_sunset.title": "Бесплатный API MiMoCode больше недоступен",
-  "tui.dialog.free_api_sunset.message": "Выполните /login для входа или настройте сторонний API, прежде чем снова использовать MiMoCode.",
+  "tui.dialog.free_api_sunset.title": "Сервис бесплатного API завершён",
+  "tui.dialog.free_api_sunset.message":
+    "Выполните /login, чтобы войти. Оформите подписку на MiMo Token Plan или настройте сторонний API для использования MiMo Code.",
   "tui.command.consent.revoke.title": "Отозвать согласие на бесплатную модель",
   "tui.consent.revoked": "Согласие на бесплатную модель отозвано — потребуется принять снова",
   "tui.dialog.select.placeholder": "Поиск",
   "tui.dialog.model.login_hint": "Подсказка: выполните /login для входа перед сменой модели",
-  "tui.model.mimo_auto.name": "MiMo Auto (MiMo-V2.5, временно бесплатно)",
+  "tui.model.mimo_auto.name": "MiMo Auto (MiMo-V2.5 бесплатно до 26 июля, 18:00 · UTC+8)",
   "tui.model.mimo_auto.sunset_name": "MiMo Auto (MiMo-V2.5)",
   "tui.dialog.token_plan.title": "Оформите Token Plan или подождите в очереди",
   "tui.dialog.token_plan.line1":

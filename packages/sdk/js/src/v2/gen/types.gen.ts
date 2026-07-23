@@ -4661,6 +4661,8 @@ export type SessionSummarizeResponse = SessionSummarizeResponses[keyof SessionSu
 export type SessionAskData = {
   body?: {
     question: string
+    providerID?: string
+    modelID?: string
   }
   path: {
     sessionID: string
@@ -5731,6 +5733,7 @@ export type ProviderListResponses = {
       [key: string]: string
     }
     connected: Array<string>
+    authenticated: Array<string>
   }
 }
 

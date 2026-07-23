@@ -58,7 +58,7 @@ export const dict = {
   "tui.tips.doc": "{highlight}/doc{/highlight} を実行してユーザードキュメントを開きます",
   "tui.tips.free_models": "期間限定で無料モデルを提供中。今すぐお試しください！",
   "tui.tips.free_api_sunset":
-    "MiMoCode の無料 API は提供を終了しました。{highlight}/login{/highlight} でログインするか、サードパーティ API を設定してから MiMoCode をご利用ください。",
+    "無料 API サービスは終了しました。{highlight}/login{/highlight} でログインしてください。MiMo Token Plan を購読するか、サードパーティ API を設定して MiMo Code をご利用ください。",
   "tui.tips.multi_skills":
     "1 つのメッセージ内で複数の {highlight}/skill-name{/highlight} を組み合わせて、複数の Skill を同時に使えます",
   "tui.tips.background": "{highlight}/background{/highlight} を実行してホーム背景にお好みの画像を設定できます",
@@ -318,13 +318,14 @@ export const dict = {
   "tui.dialog.agreement.title": "利用規約とプライバシー",
   "tui.dialog.agreement.message": "内容を確認し、同意のうえで続行してください。",
   "tui.dialog.agreement.confirm": "同意して続行",
-  "tui.dialog.free_api_sunset.title": "MiMoCode 無料 API は提供を終了しました",
-  "tui.dialog.free_api_sunset.message": "/login でログインするか、サードパーティ API を設定してから MiMoCode をご利用ください。",
+  "tui.dialog.free_api_sunset.title": "無料 API サービスは終了しました",
+  "tui.dialog.free_api_sunset.message":
+    "/login でログインしてください。MiMo Token Plan を購読するか、サードパーティ API を設定して MiMo Code をご利用ください。",
   "tui.command.consent.revoke.title": "無料モデルの同意を取り消す",
   "tui.consent.revoked": "無料モデルの同意を取り消しました — 次回利用時に再度同意を求めます",
   "tui.dialog.select.placeholder": "検索",
   "tui.dialog.model.login_hint": "ヒント：モデルを切り替える前に /login でログインしてください",
-  "tui.model.mimo_auto.name": "MiMo Auto（MiMo-V2.5 期間限定無料）",
+  "tui.model.mimo_auto.name": "MiMo Auto（MiMo-V2.5 7月26日 18:00 まで無料 · UTC+8）",
   "tui.model.mimo_auto.sunset_name": "MiMo Auto（MiMo-V2.5）",
   "tui.dialog.token_plan.title": "Token Plan を購読するか順番待ち",
   "tui.dialog.token_plan.line1":
