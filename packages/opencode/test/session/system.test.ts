@@ -3,14 +3,66 @@ import path from "path"
 import { Effect } from "effect"
 import { Agent } from "../../src/agent/agent"
 import { Instance } from "../../src/project/instance"
+import { ModelID, ProviderID } from "../../src/provider/schema"
 import { SystemPrompt } from "../../src/session/system"
 import { provideInstance, tmpdir } from "../fixture/fixture"
+import { ProviderTest } from "../fake/provider"
 
 function load<A>(dir: string, fn: (svc: Agent.Interface) => Effect.Effect<A>) {
   return Effect.runPromise(provideInstance(dir)(Agent.Service.use(fn)).pipe(Effect.provide(Agent.defaultLayer)))
 }
 
 describe("session.system", () => {
+  test("GPT prompt aligns exec and parallel-call guidance", () => {
+    const prompt = SystemPrompt.provider(ProviderTest.model())[0]
+
+    expect(prompt).toContain("Parallelize only tool calls that are independent")
+    expect(prompt).toContain("keep dependencies sequential")
+    expect(prompt).toContain("only one small call is needed")
+    expect(prompt).not.toContain("When possible, prefer parallelization over sequential tool calls")
+  })
+
+  test("does not inject vision capability guidance for GPT, Claude, or Gemini models", async () => {
+    await using tmp = await tmpdir({ git: true })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const prompts = await Effect.runPromise(
+          Effect.gen(function* () {
+            const system = yield* SystemPrompt.Service
+            return yield* Effect.all([
+              system.environment(
+                ProviderTest.model({ id: ModelID.make("gpt-5.4"), api: { id: "gpt-5.4" } as never }),
+                Date.now(),
+              ),
+              system.environment(
+                ProviderTest.model({
+                  id: ModelID.make("claude-sonnet-4-6"),
+                  providerID: ProviderID.make("anthropic"),
+                  api: { id: "claude-sonnet-4-6" } as never,
+                }),
+                Date.now(),
+              ),
+              system.environment(
+                ProviderTest.model({
+                  id: ModelID.make("gemini-2.5-pro"),
+                  providerID: ProviderID.make("google"),
+                  api: { id: "gemini-2.5-pro" } as never,
+                }),
+                Date.now(),
+              ),
+            ])
+          }).pipe(Effect.provide(SystemPrompt.defaultLayer)),
+        )
+
+        expect(prompts[0].join("\n")).not.toContain("<vision-capability>")
+        expect(prompts[1].join("\n")).not.toContain("<vision-capability>")
+        expect(prompts[2].join("\n")).not.toContain("<vision-capability>")
+      },
+    })
+  })
+
   test("prompts the model to search skills from the first user query", async () => {
     await using tmp = await tmpdir({ git: true })
     const home = process.env.HOME

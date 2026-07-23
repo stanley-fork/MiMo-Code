@@ -7,12 +7,12 @@ const results = await Promise.all(urls.map((url) => tools.webfetch({ url, format
 return results.map((result) => result.output)
 ```
 
-Use `exec` when JavaScript can efficiently compose several independent tool calls, reduce their outputs, or keep large intermediate results out of the conversation. Prefer direct tool calls when there are only a few calls or when each result needs model judgment before the next call.
+Use `exec` when JavaScript can batch multiple independent tool calls, programmatically transform their results, or keep large intermediate outputs out of the conversation. Run independent calls with `Promise.all` or `Promise.allSettled`, but keep dependent operations sequential. Prefer direct tool calls when a result needs model judgment before the next call or only one small call is needed; do not use `exec` merely to force concurrency.
 
 The script environment provides JavaScript built-ins plus `tools`, `files`, and `console`. It does not provide Node.js modules, `import`, `require`, `process`, `fetch`, or timers. Use the available tools for external operations.
 
 - Call tools with `await tools.name(input)`.
-- Use `Promise.all` or `Promise.allSettled` for independent calls; at most 8 run concurrently.
+- Use `Promise.all` or `Promise.allSettled` only for independent calls; at most 8 run concurrently.
 - Return a small JSON-serializable aggregate. Circular values, BigInt, and throwing getters fail execution.
 - Use `console.log` only for debugging; logs are included in the result.
 - Tool permissions are enforced for every nested call.
