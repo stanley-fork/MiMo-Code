@@ -57,6 +57,8 @@ export const dict: Record<string, string> = {
     "The free API service has ended. Run {highlight}/login{/highlight} to sign in. Subscribe to the MiMo Token Plan or configure a third-party API to use MiMo Code.",
   "tui.tips.multi_skills":
     "Combine multiple {highlight}/skill-name{/highlight} triggers in a single message to use several skills together",
+  "tui.tips.ask_slash_commands":
+    "Looking for a shortcut? Ask {highlight}Which slash commands can I use?{/highlight} directly in chat",
   "tui.tips.background":
     "Run {highlight}/background{/highlight} to set a custom image as your home background",
   "tui.tips.compose_next":

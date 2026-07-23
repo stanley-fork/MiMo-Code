@@ -14,6 +14,7 @@ const COMPOSE_LOCK_TIP = "tui.tips.compose_next"
 // Promote recently-added or critical features so users discover them.
 // Tips not listed here use the default weight of 1.
 const PRIORITY_WEIGHTS: Record<string, number> = {
+  "tui.tips.ask_slash_commands": 70,
   "tui.tips.multi_skills": 60,
   "tui.tips.free_models": 50,
   "tui.tips.free_api_sunset": 50,
@@ -28,6 +29,7 @@ const PRIORITY_WEIGHTS: Record<string, number> = {
 }
 
 const TIP_KEYS = [
+  "tui.tips.ask_slash_commands",
   "tui.tips.multi_skills",
   "tui.tips.free_models",
   "tui.tips.background",
@@ -130,6 +132,10 @@ const TIP_KEYS = [
   "tui.tips.rename",
 ] as const
 
+export function tipWeight(key: string) {
+  return PRIORITY_WEIGHTS[key] ?? 1
+}
+
 // Build the tip key pool. The Tab-cycle tip mentions the Orchestrator agent
 // only when the experiment is enabled; otherwise use the variant without it so
 // we never point users at an agent that isn't reachable. The platform-specific
@@ -177,7 +183,7 @@ function parse(tip: string): TipPart[] {
 }
 
 function pickWeighted(keys: readonly string[]): string {
-  const weights = keys.map((k) => PRIORITY_WEIGHTS[k] ?? 1)
+  const weights = keys.map(tipWeight)
   const total = weights.reduce((a, b) => a + b, 0)
   let target = Math.random() * total
   for (let i = 0; i < keys.length; i++) {

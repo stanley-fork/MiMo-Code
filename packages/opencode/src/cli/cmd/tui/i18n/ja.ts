@@ -61,6 +61,8 @@ export const dict = {
     "無料 API サービスは終了しました。{highlight}/login{/highlight} でログインしてください。MiMo Token Plan を購読するか、サードパーティ API を設定して MiMo Code をご利用ください。",
   "tui.tips.multi_skills":
     "1 つのメッセージ内で複数の {highlight}/skill-name{/highlight} を組み合わせて、複数の Skill を同時に使えます",
+  "tui.tips.ask_slash_commands":
+    "ショートカットを探すには、チャットで {highlight}使えるスラッシュコマンドは？{/highlight} と直接質問できます",
   "tui.tips.background": "{highlight}/background{/highlight} を実行してホーム背景にお好みの画像を設定できます",
   "tui.tips.compose_next":
     "{highlight}/compose-next{/highlight} を推奨（強力なモデル向け・Compose 代替）",

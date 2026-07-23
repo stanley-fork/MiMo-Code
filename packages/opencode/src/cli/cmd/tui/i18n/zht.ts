@@ -60,6 +60,8 @@ export const dict = {
     "免費 API 服務已終止。請使用 {highlight}/login{/highlight} 登入，歡迎訂閱 MiMo Token Plan 或設定第三方 API 後使用 MiMo Code。",
   "tui.tips.multi_skills":
     "在同一則訊息中輸入多個 {highlight}/skill-name{/highlight} 可同時組合使用多個 Skills",
+  "tui.tips.ask_slash_commands":
+    "想找快捷指令？直接在聊天中問 {highlight}有哪些 slash 快捷指令？{/highlight}",
   "tui.tips.background": "執行 {highlight}/background{/highlight} 設定自訂圖片作為主頁背景",
   "tui.tips.compose_next":
     "推薦前沿模型使用 {highlight}/compose-next{/highlight} 代替 Compose 智慧體",

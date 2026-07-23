@@ -1,11 +1,25 @@
 import { describe, expect, test } from "bun:test"
-import { buildTipKeys } from "../../../../src/cli/cmd/tui/feature-plugins/home/tips-view"
+import { buildTipKeys, tipWeight } from "../../../../src/cli/cmd/tui/feature-plugins/home/tips-view"
+import { dict as en } from "../../../../src/cli/cmd/tui/i18n/en"
+import { dict as es } from "../../../../src/cli/cmd/tui/i18n/es"
+import { dict as fr } from "../../../../src/cli/cmd/tui/i18n/fr"
+import { dict as ja } from "../../../../src/cli/cmd/tui/i18n/ja"
+import { dict as ru } from "../../../../src/cli/cmd/tui/i18n/ru"
+import { dict as zh } from "../../../../src/cli/cmd/tui/i18n/zh"
+import { dict as zht } from "../../../../src/cli/cmd/tui/i18n/zht"
 
 // buildTipKeys assembles the weighted tip pool. The Tab-cycle tip must only
 // mention the Orchestrator agent when the experiment flag is on; otherwise the
 // Orchestrator-free variant is used so we never point users at an unreachable
 // agent.
 describe("buildTipKeys", () => {
+  test("promotes localized chat guidance for discovering slash commands", () => {
+    const key = "tui.tips.ask_slash_commands"
+    expect(buildTipKeys(false, "linux")).toContain(key)
+    expect(tipWeight(key)).toBeGreaterThan(tipWeight("tui.tips.multi_skills"))
+    Array.of(en, es, fr, ja, ru, zh, zht).forEach((dict) => expect(dict[key]).toBeTruthy())
+  })
+
   test("omits the Orchestrator tab tip when the flag is off", () => {
     const keys = buildTipKeys(false, "linux")
     expect(keys).toContain("tui.tips.tab_agent")

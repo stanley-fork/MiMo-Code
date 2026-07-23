@@ -63,6 +63,8 @@ export const dict = {
     "El servicio de API gratuita ha finalizado. Ejecuta {highlight}/login{/highlight} para iniciar sesión. Suscríbete a MiMo Token Plan o configura una API de terceros para usar MiMo Code.",
   "tui.tips.multi_skills":
     "Combina varios {highlight}/skill-name{/highlight} en un mismo mensaje para usar varias Skills a la vez",
+  "tui.tips.ask_slash_commands":
+    "¿Buscas un atajo? Pregunta {highlight}¿Qué comandos slash puedo usar?{/highlight} directamente en el chat",
   "tui.tips.background":
     "Ejecuta {highlight}/background{/highlight} para usar una imagen personalizada como fondo de inicio",
   "tui.tips.compose_next":
