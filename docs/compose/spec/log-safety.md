@@ -1,14 +1,28 @@
 ---
 feature: log-safety
-status: in-progress
+status: delivered
 updated: 2026-07-24
 branch: fix/log-safety
-commits:
+commits: e27a610c081744624d0449744911ffcfd3e26b6c..b86149850ba6cef736a96d31eb7198a04b5ecee0
 ---
 
 # Log Safety
 
 ## Report
+
+**What was built** — Logger instances now own unique active files and serialize initialization, writes, rotation, and shutdown through one lifecycle queue. Cleanup preserves live files, recovers stale process and worker files, enforces archive count and size budgets, and stops file writes safely when finalization cannot complete.
+
+CLI hard exits now use `Log.exit()`, normal TUI exits return through the top-level shutdown, and the worker closes its log before potentially long teardown work. This guarantees pending records are handled before the process or worker terminates.
+
+**Verification** — `bun test test/util/log.test.ts test/effect/app-runtime-logger.test.ts test/effect/runner-warn-log.test.ts` passed with 20 tests and 52 expectations. `bun typecheck` passed. Targeted oxlint completed with zero errors and only pre-existing warnings. An isolated `bun dev run` error-path check exited with code 1 and produced zero active logs and one completed log. `git diff --check` passed, and the final independent review found no critical issues.
+
+**Journey log**
+
+- The first review exposed that a write queue alone is insufficient; lifecycle mutations must use the same queue.
+- Capturing a stream before queued rotation can make shutdown close the wrong resource; shutdown now resolves the current stream only when its queued operation runs.
+- Bun main and worker contexts share a PID, so stale worker recovery also needs the process role.
+- TUI worker logging must close before the 30-second drain because the host may terminate the worker after 5 seconds.
+- Isolated dev CLI driving verified the real exit path without touching user configuration or session data.
 
 ## [S1] Problem
 
@@ -34,6 +48,6 @@ This change does not introduce per-record truncation, modify MCP/ACP/voice loggi
 
 ## Tasks
 
-- [ ] T1: Implement unique active-file ownership and a serialized lifecycle queue — acceptance: concurrent initialization cannot target, leak, or clean another live active file, and file/count/total limits hold (covers: S2)
-- [ ] T2: Add failure-safe flush, shutdown, and command exit lifecycle — acceptance: write/finalization failures do not reject globally or resume unsafe file writes, and CLI/TUI/worker exit paths close pending logs before termination (covers: S3; depends: T1)
-- [ ] T3: Add and run focused tests and package typecheck — acceptance: all S5 cases pass from packages/opencode and typecheck succeeds (covers: S5; depends: T1, T2)
+- [x] T1: Implement unique active-file ownership and a serialized lifecycle queue — acceptance: concurrent initialization cannot target, leak, or clean another live active file, and file/count/total limits hold (covers: S2)
+- [x] T2: Add failure-safe flush, shutdown, and command exit lifecycle — acceptance: write/finalization failures do not reject globally or resume unsafe file writes, and CLI/TUI/worker exit paths close pending logs before termination (covers: S3; depends: T1)
+- [x] T3: Add and run focused tests and package typecheck — acceptance: all S5 cases pass from packages/opencode and typecheck succeeds (covers: S5; depends: T1, T2)
