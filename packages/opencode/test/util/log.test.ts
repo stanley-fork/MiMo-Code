@@ -49,9 +49,10 @@ test("concurrent initialization serializes ownership without leaking active file
   expect(files.filter((file) => !file.endsWith(".active.log"))).toHaveLength(1)
 })
 
-test("cleanup preserves active files and keeps the newest ten archives", async () => {
+test("cleanup preserves another live context and keeps the newest ten archives", async () => {
   await using tmp = await tmpdir()
   Global.Path.log = tmp.path
+  process.env[MIMOCODE_PROCESS_ROLE] = "worker"
   const active = `1999-01-01T000000-main-${process.pid}-deadbeef.active.log`
   const archives = Array.from(
     { length: 12 },
