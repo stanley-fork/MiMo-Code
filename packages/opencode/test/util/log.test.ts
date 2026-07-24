@@ -3,67 +3,187 @@ import fs from "fs/promises"
 import path from "path"
 import { Global } from "../../src/global"
 import { Log } from "../../src/util"
+import { MIMOCODE_PROCESS_ROLE } from "../../src/util/mimo-process"
 import { tmpdir } from "../fixture/fixture"
 
 const log = Global.Path.log
+const role = process.env[MIMOCODE_PROCESS_ROLE]
+const mb = 1024 * 1024
 
-afterEach(() => {
+afterEach(async () => {
+  await Log.shutdown()
   Global.Path.log = log
+  if (role === undefined) delete process.env[MIMOCODE_PROCESS_ROLE]
+  else process.env[MIMOCODE_PROCESS_ROLE] = role
 })
 
-async function files(dir: string) {
-  let last = ""
-  let same = 0
-
-  for (let i = 0; i < 50; i++) {
-    const list = (await fs.readdir(dir)).sort()
-    const next = JSON.stringify(list)
-    same = next === last ? same + 1 : 0
-    if (same >= 2 && list.length === 11) return list
-    last = next
-    await Bun.sleep(10)
-  }
-
-  return (await fs.readdir(dir)).sort()
-}
-
-test("init cleanup keeps the newest timestamped logs", async () => {
+test("reinitialization gives each logger context a unique active file", async () => {
   await using tmp = await tmpdir()
   Global.Path.log = tmp.path
+  process.env[MIMOCODE_PROCESS_ROLE] = "main"
 
-  const list = Array.from({ length: 12 }, (_, i) => `2000-01-${String(i + 1).padStart(2, "0")}T000000.log`)
+  await Log.init({ print: false, dev: true })
+  const main = Log.file()
+  Log.Default.info("from main")
 
-  await Promise.all(list.map((file) => fs.writeFile(path.join(tmp.path, file), file)))
+  process.env[MIMOCODE_PROCESS_ROLE] = "worker"
+  await Log.init({ print: false, dev: true })
+  const worker = Log.file()
 
-  await Log.init({ print: false, dev: false })
-
-  const next = await files(tmp.path)
-
-  expect(next).not.toContain(list[0]!)
-  expect(next).toContain(list.at(-1)!)
+  expect(main).not.toBe(worker)
+  expect(path.basename(main)).toContain(`-main-${process.pid}-`)
+  expect(path.basename(worker)).toContain(`-worker-${process.pid}-`)
+  expect(main.endsWith(".active.log")).toBe(true)
+  expect(worker.endsWith(".active.log")).toBe(true)
+  expect(await fs.readFile(main.replace(/\.active\.log$/, ".log"), "utf8")).toContain("from main")
 })
 
-test("init cleanup prunes rotated dev.log archives", async () => {
+test("cleanup preserves active files and keeps the newest ten archives", async () => {
   await using tmp = await tmpdir()
   Global.Path.log = tmp.path
+  const active = `1999-01-01T000000-main-${process.pid}-deadbeef.active.log`
+  const archives = Array.from(
+    { length: 12 },
+    (_, i) => `2000-01-${String(i + 1).padStart(2, "0")}T000000-main-123-${String(i).padStart(8, "0")}.log`,
+  )
 
-  // dev.log rotations and size-rotation archives must also be pruned, not just
-  // bare <iso>.log session logs.
-  const list = Array.from({ length: 12 }, (_, i) => `dev.log.2000-01-${String(i + 1).padStart(2, "0")}T000000`)
-  await Promise.all(list.map((file) => fs.writeFile(path.join(tmp.path, file), file)))
+  await fs.writeFile(path.join(tmp.path, active), "active")
+  await Promise.all(
+    archives.map(async (file, i) => {
+      const target = path.join(tmp.path, file)
+      await fs.writeFile(target, file)
+      await fs.utimes(target, i + 1, i + 1)
+    }),
+  )
+  await Log.init({ print: false })
 
-  await Log.init({ print: false, dev: false })
+  const files = await fs.readdir(tmp.path)
+  expect(files).toContain(active)
+  expect(files).not.toContain(archives[0])
+  expect(files).not.toContain(archives[1])
+  expect(files).toContain(archives.at(-1)!)
+  expect(files.filter((file) => !file.endsWith(".active.log"))).toHaveLength(10)
+})
 
-  for (let i = 0; i < 50; i++) {
-    const current = await fs.readdir(tmp.path)
-    const archives = current.filter((f) => f.startsWith("dev.log."))
-    if (archives.length <= 10) break
+test("cleanup recovers an active file left by an exited process", async () => {
+  await using tmp = await tmpdir()
+  Global.Path.log = tmp.path
+  const child = Bun.spawn([process.execPath, "-e", ""])
+  await child.exited
+  const active = `2000-01-01T000000-worker-${child.pid}-deadbeef.active.log`
+  await fs.writeFile(path.join(tmp.path, active), "orphaned")
+
+  await Log.init({ print: false })
+
+  expect(
+    await fs.stat(path.join(tmp.path, active)).then(
+      () => true,
+      () => false,
+    ),
+  ).toBe(false)
+  expect(await fs.readFile(path.join(tmp.path, active.replace(/\.active\.log$/, ".log")), "utf8")).toBe("orphaned")
+})
+
+test("cleanup enforces the archived total-size budget", async () => {
+  await using tmp = await tmpdir()
+  Global.Path.log = tmp.path
+  const archives = Array.from(
+    { length: 4 },
+    (_, i) => `2000-01-0${i + 1}T000000-main-123-${String(i).padStart(8, "0")}.log`,
+  )
+
+  await Promise.all(
+    archives.map(async (file) => {
+      const target = path.join(tmp.path, file)
+      await fs.writeFile(target, "")
+      await fs.truncate(target, 80 * mb)
+    }),
+  )
+  await Log.init({ print: false })
+
+  const files = (await fs.readdir(tmp.path)).filter((file) => !file.endsWith(".active.log"))
+  const sizes = await Promise.all(files.map((file) => fs.stat(path.join(tmp.path, file)).then((stat) => stat.size)))
+  expect(sizes.reduce((sum, size) => sum + size, 0)).toBeLessThanOrEqual(200 * mb)
+})
+
+test("queued writes are ordered and flush waits for persistence", async () => {
+  await using tmp = await tmpdir()
+  Global.Path.log = tmp.path
+  await Log.init({ print: false, level: "INFO" })
+
+  Array.from({ length: 1_000 }, (_, i) => i).forEach((i) => Log.Default.info(`entry-${i}`))
+  await Log.flush()
+
+  const lines = (await fs.readFile(Log.file(), "utf8")).trim().split("\n")
+  expect(lines).toHaveLength(1_000)
+  expect(lines[0]?.endsWith("entry-0")).toBe(true)
+  expect(lines.at(-1)?.endsWith("entry-999")).toBe(true)
+})
+
+test("rotation serializes writes before the active file exceeds 50 MiB", async () => {
+  await using tmp = await tmpdir()
+  Global.Path.log = tmp.path
+  await Log.init({ print: false, rotate: true })
+  const chunk = "x".repeat(256 * 1024)
+
+  Array.from({ length: 201 }).forEach(() => Log.Default.info(chunk))
+  await Log.flush()
+
+  const files = await fs.readdir(tmp.path)
+  const sizes = await Promise.all(files.map((file) => fs.stat(path.join(tmp.path, file)).then((stat) => stat.size)))
+  expect(files.some((file) => !file.endsWith(".active.log"))).toBe(true)
+  expect(sizes.every((size) => size <= 50 * mb)).toBe(true)
+})
+
+test("rotation can still be disabled explicitly", async () => {
+  await using tmp = await tmpdir()
+  Global.Path.log = tmp.path
+  await Log.init({ print: false, rotate: false })
+  const chunk = "x".repeat(256 * 1024)
+
+  Array.from({ length: 201 }).forEach(() => Log.Default.info(chunk))
+  await Log.flush()
+
+  expect(await fs.stat(Log.file()).then((stat) => stat.size)).toBeGreaterThan(50 * mb)
+  expect(await fs.readdir(tmp.path)).toHaveLength(1)
+})
+
+test("write failures do not escape as process-level errors", async () => {
+  await using tmp = await tmpdir()
+  const failures: unknown[] = []
+  const capture = (error: unknown) => failures.push(error)
+  Global.Path.log = path.join(tmp.path, "not-a-directory")
+  await fs.writeFile(Global.Path.log, "file")
+  process.on("unhandledRejection", capture)
+  process.on("uncaughtException", capture)
+
+  try {
+    await Log.init({ print: false })
+    Log.Default.info("cannot be written")
+    await Log.flush()
     await Bun.sleep(10)
+    expect(failures).toHaveLength(0)
+  } finally {
+    process.off("unhandledRejection", capture)
+    process.off("uncaughtException", capture)
   }
+})
 
-  const final = await fs.readdir(tmp.path)
-  const archives = final.filter((f) => f.startsWith("dev.log.")).sort()
-  expect(archives.length).toBeLessThanOrEqual(10)
-  expect(archives).not.toContain(list[0]!)
-  expect(archives).toContain(list.at(-1)!)
+test("shutdown flushes and marks the active file completed", async () => {
+  await using tmp = await tmpdir()
+  Global.Path.log = tmp.path
+  await Log.init({ print: false })
+  const active = Log.file()
+  Log.Default.info("last message")
+
+  await Log.shutdown()
+
+  expect(Log.file()).toBe(active.replace(/\.active\.log$/, ".log"))
+  expect(await fs.readFile(Log.file(), "utf8")).toContain("last message")
+  expect(
+    await fs.stat(active).then(
+      () => true,
+      () => false,
+    ),
+  ).toBe(false)
 })

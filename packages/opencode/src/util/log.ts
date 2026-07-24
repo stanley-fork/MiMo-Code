@@ -63,73 +63,142 @@ export function file() {
 let stream: ReturnType<typeof createWriteStream> | undefined
 let written = 0
 let rotation = true
-let write = (msg: any) => {
-  process.stderr.write(msg)
-  return msg.length
-}
+let sequence = 0
+let pending = Promise.resolve()
+let failureReported = false
 
 function stamp() {
-  return new Date().toISOString().split(".")[0].replace(/:/g, "")
+  return new Date().toISOString().replace(/[:.]/g, "")
 }
 
 export async function init(options: Options) {
+  await shutdown()
   if (options.level) level = options.level
   rotation = options.rotate ?? !Flag.MIMOCODE_DISABLE_LOG_ROTATION
-  void cleanup(Global.Path.log)
-  if (options.print) return
-  logpath = path.join(Global.Path.log, options.dev ? "dev.log" : stamp() + ".log")
-  if (options.dev) {
-    // Preserve previous dev.log as dev.log.<timestamp> for hang/incident
-    // forensics. cleanup() above already prunes old archived logs.
-    const stat = await fs.stat(logpath).catch(() => null)
-    if (stat && stat.size > 0) await fs.rename(logpath, `${logpath}.${stamp()}`).catch(() => {})
-  } else {
-    await fs.truncate(logpath).catch(() => {})
+  failureReported = false
+  await cleanup(Global.Path.log)
+  if (options.print) {
+    logpath = ""
+    return
   }
+  const role = (process.env.MIMOCODE_PROCESS_ROLE ?? "main").replace(/[^a-zA-Z0-9._-]/g, "-")
+  logpath = path.join(
+    Global.Path.log,
+    `${options.dev ? "dev" : stamp()}-${role}-${process.pid}-${crypto.randomUUID().slice(0, 8)}.active.log`,
+  )
   stream = createWriteStream(logpath, { flags: "a" })
+  stream.on("error", report)
   written = 0
-  write = async (msg: any) => {
-    written += Buffer.byteLength(msg)
-    if (rotation && written >= MAX_FILE_SIZE) {
-      written = 0
-      await rotate()
-    }
-    return new Promise((resolve, reject) => {
-      stream!.write(msg, (err) => {
-        if (err) reject(err)
-        else resolve(msg.length)
-      })
-    })
-  }
+  sequence = 0
 }
 
-// Archive the active file as <logpath>.<timestamp> and start a fresh one at the
-// same path, so file() stays stable. The renamed file is then subject to
-// cleanup's total-size budget.
+function report(error: unknown) {
+  if (failureReported) return
+  failureReported = true
+  const message = error instanceof Error ? error.message : String(error)
+  try {
+    process.stderr.write(`mimocode log write failed: ${message}\n`)
+  } catch {}
+}
+
+function write(msg: string) {
+  if (!stream) {
+    process.stderr.write(msg)
+    return
+  }
+  pending = pending.then(() => append(msg)).catch(report)
+}
+
+async function append(msg: string) {
+  const size = Buffer.byteLength(msg)
+  if (rotation && written > 0 && written + size > MAX_FILE_SIZE) await rotate()
+  const target = stream
+  if (!target) {
+    process.stderr.write(msg)
+    return
+  }
+  await new Promise<void>((resolve, reject) => {
+    target.write(msg, (error) => (error ? reject(error) : resolve()))
+  })
+  written += size
+}
+
 async function rotate() {
   const previous = stream
-  await fs.rename(logpath, `${logpath}.${stamp()}`).catch(() => {})
+  if (!previous) return
+  await close(previous)
+  await fs.rename(logpath, logpath.replace(/\.active\.log$/, `.log.${stamp()}-${sequence++}`)).catch(report)
   stream = createWriteStream(logpath, { flags: "a" })
-  if (previous) previous.end()
-  void cleanup(Global.Path.log)
+  stream.on("error", report)
+  written = 0
+  await cleanup(Global.Path.log)
+}
+
+function close(target: ReturnType<typeof createWriteStream>) {
+  return new Promise<void>((resolve) => {
+    if (target.closed) return resolve()
+    target.once("close", resolve)
+    target.end()
+  })
+}
+
+export async function flush() {
+  await pending
+}
+
+export async function shutdown() {
+  const target = stream
+  if (!target) return flush()
+  pending = pending
+    .then(async () => {
+      await close(target)
+      if (stream !== target) return
+      stream = undefined
+      const completed = logpath.replace(/\.active\.log$/, ".log")
+      await fs.rename(logpath, completed).then(
+        () => {
+          logpath = completed
+        },
+        () => {},
+      )
+      await cleanup(Global.Path.log)
+    })
+    .catch(report)
+  await pending
+}
+
+function alive(pid: number) {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    return !(error instanceof Error && "code" in error && error.code === "ESRCH")
+  }
 }
 
 async function cleanup(dir: string) {
   const entries = await fs.readdir(dir).catch(() => [] as string[])
   const stats = await Promise.all(
-    entries
-      // Match session logs (<iso>.log), dev rotations (dev.log.<stamp>) and
-      // size rotations (<name>.log.<stamp>). Skip the active file so it is
-      // never deleted out from under the open write stream.
-      .filter((name) => name.includes(".log") && path.join(dir, name) !== logpath)
-      .map(async (name) => {
-        const stat = await fs.stat(path.join(dir, name)).catch(() => null)
-        return stat?.isFile() ? { name, size: stat.size } : null
-      }),
+    entries.map(async (name) => {
+      if (!name.includes(".log")) return null
+      if (name.endsWith(".active.log")) {
+        const owner = name.match(/-(\d+)-[0-9a-f]{8}\.active\.log$/)?.[1]
+        if (!owner || alive(Number(owner))) return null
+        const completed = name.replace(/\.active\.log$/, ".log")
+        const renamed = await fs.rename(path.join(dir, name), path.join(dir, completed)).then(
+          () => completed,
+          () => null,
+        )
+        if (!renamed) return null
+        name = renamed
+      }
+      const stat = await fs.stat(path.join(dir, name)).catch(() => null)
+      return stat?.isFile() ? { name, size: stat.size, modified: stat.mtimeMs } : null
+    }),
   )
-  // Sort oldest first by name; filenames are timestamp-encoded so lexical order
-  // is chronological within each family.
-  const files = stats.flatMap((f) => (f ? [f] : [])).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+  const files = stats
+    .flatMap((item) => (item ? [item] : []))
+    .sort((a, b) => a.modified - b.modified || a.name.localeCompare(b.name))
 
   let total = files.reduce((sum, f) => sum + f.size, 0)
   let remaining = files.length

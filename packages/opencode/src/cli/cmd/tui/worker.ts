@@ -89,6 +89,7 @@ export const rpc = {
   },
   async shutdown() {
     Log.Default.info("worker shutting down")
+    await Log.flush()
 
     // Give in-flight background checkpoint writers a bounded chance to finish
     // before we tear down instances. A checkpoint writer can run for minutes on
@@ -105,6 +106,7 @@ export const rpc = {
 
     await Instance.disposeAll()
     if (server) await server.stop(true)
+    await Log.shutdown()
   },
 }
 
