@@ -89,6 +89,7 @@ export const rpc = {
   },
   async shutdown() {
     Log.Default.info("worker shutting down")
+    await Log.shutdown()
 
     // Give in-flight background checkpoint writers a bounded chance to finish
     // before we tear down instances. A checkpoint writer can run for minutes on
