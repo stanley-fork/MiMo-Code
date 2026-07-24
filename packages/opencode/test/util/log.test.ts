@@ -38,6 +38,17 @@ test("reinitialization gives each logger context a unique active file", async ()
   expect(await fs.readFile(main.replace(/\.active\.log$/, ".log"), "utf8")).toContain("from main")
 })
 
+test("concurrent initialization serializes ownership without leaking active files", async () => {
+  await using tmp = await tmpdir()
+  Global.Path.log = tmp.path
+
+  await Promise.all([Log.init({ print: false }), Log.init({ print: false })])
+
+  const files = await fs.readdir(tmp.path)
+  expect(files.filter((file) => file.endsWith(".active.log"))).toHaveLength(1)
+  expect(files.filter((file) => !file.endsWith(".active.log"))).toHaveLength(1)
+})
+
 test("cleanup preserves active files and keeps the newest ten archives", async () => {
   await using tmp = await tmpdir()
   Global.Path.log = tmp.path
@@ -82,6 +93,21 @@ test("cleanup recovers an active file left by an exited process", async () => {
     ),
   ).toBe(false)
   expect(await fs.readFile(path.join(tmp.path, active.replace(/\.active\.log$/, ".log")), "utf8")).toBe("orphaned")
+})
+
+test("worker initialization recovers a stale same-process worker file", async () => {
+  await using tmp = await tmpdir()
+  Global.Path.log = tmp.path
+  process.env[MIMOCODE_PROCESS_ROLE] = "worker"
+  const active = `2000-01-01T000000-worker-${process.pid}-deadbeef.active.log`
+  await fs.writeFile(path.join(tmp.path, active), "orphaned worker")
+
+  await Log.init({ print: false })
+
+  const files = await fs.readdir(tmp.path)
+  expect(files).not.toContain(active)
+  expect(files).toContain(active.replace(/\.active\.log$/, ".log"))
+  expect(files.filter((file) => file.endsWith(".active.log"))).toHaveLength(1)
 })
 
 test("cleanup enforces the archived total-size budget", async () => {
@@ -133,6 +159,21 @@ test("rotation serializes writes before the active file exceeds 50 MiB", async (
   const sizes = await Promise.all(files.map((file) => fs.stat(path.join(tmp.path, file)).then((stat) => stat.size)))
   expect(files.some((file) => !file.endsWith(".active.log"))).toBe(true)
   expect(sizes.every((size) => size <= 50 * mb)).toBe(true)
+})
+
+test("shutdown closes the final stream when queued writes rotate", async () => {
+  await using tmp = await tmpdir()
+  Global.Path.log = tmp.path
+  await Log.init({ print: false, rotate: true })
+  const chunk = "x".repeat(256 * 1024)
+
+  Array.from({ length: 201 }).forEach(() => Log.Default.info(chunk))
+  await Log.shutdown()
+
+  const files = await fs.readdir(tmp.path)
+  expect(files.some((file) => file.endsWith(".active.log"))).toBe(false)
+  expect(files.some((file) => file.includes(".log."))).toBe(true)
+  expect(Log.file().endsWith(".log")).toBe(true)
 })
 
 test("rotation can still be disabled explicitly", async () => {

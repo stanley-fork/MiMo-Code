@@ -72,24 +72,25 @@ function stamp() {
 }
 
 export async function init(options: Options) {
-  await shutdown()
-  if (options.level) level = options.level
-  rotation = options.rotate ?? !Flag.MIMOCODE_DISABLE_LOG_ROTATION
-  failureReported = false
-  await cleanup(Global.Path.log)
-  if (options.print) {
-    logpath = ""
-    return
-  }
-  const role = (process.env.MIMOCODE_PROCESS_ROLE ?? "main").replace(/[^a-zA-Z0-9._-]/g, "-")
-  logpath = path.join(
-    Global.Path.log,
-    `${options.dev ? "dev" : stamp()}-${role}-${process.pid}-${crypto.randomUUID().slice(0, 8)}.active.log`,
-  )
-  stream = createWriteStream(logpath, { flags: "a" })
-  stream.on("error", report)
-  written = 0
-  sequence = 0
+  await enqueue(async () => {
+    await closeCurrent()
+    if (options.level) level = options.level
+    rotation = options.rotate ?? !Flag.MIMOCODE_DISABLE_LOG_ROTATION
+    failureReported = false
+    const role = (process.env.MIMOCODE_PROCESS_ROLE ?? "main").replace(/[^a-zA-Z0-9._-]/g, "-")
+    await cleanup(Global.Path.log, { pid: process.pid, role })
+    if (options.print) {
+      logpath = ""
+      return
+    }
+    logpath = path.join(
+      Global.Path.log,
+      `${options.dev ? "dev" : stamp()}-${role}-${process.pid}-${crypto.randomUUID().slice(0, 8)}.active.log`,
+    )
+    await open(logpath)
+    written = 0
+    sequence = 0
+  })
 }
 
 function report(error: unknown) {
@@ -102,11 +103,12 @@ function report(error: unknown) {
 }
 
 function write(msg: string) {
-  if (!stream) {
-    process.stderr.write(msg)
-    return
-  }
-  pending = pending.then(() => append(msg)).catch(report)
+  void enqueue(() => append(msg))
+}
+
+function enqueue(operation: () => void | Promise<void>) {
+  pending = pending.then(operation).catch(report)
+  return pending
 }
 
 async function append(msg: string) {
@@ -127,11 +129,56 @@ async function rotate() {
   const previous = stream
   if (!previous) return
   await close(previous)
-  await fs.rename(logpath, logpath.replace(/\.active\.log$/, `.log.${stamp()}-${sequence++}`)).catch(report)
-  stream = createWriteStream(logpath, { flags: "a" })
-  stream.on("error", report)
+  stream = undefined
+  const archived = logpath.replace(/\.active\.log$/, `.log.${stamp()}-${sequence++}`)
+  if (!(await move(logpath, archived))) {
+    written = 0
+    return
+  }
+  await open(logpath)
   written = 0
   await cleanup(Global.Path.log)
+}
+
+async function open(targetPath: string) {
+  const target = createWriteStream(targetPath, { flags: "a" })
+  stream = target
+  target.on("error", report)
+  const opened = await new Promise<boolean>((resolve) => {
+    target.once("open", () => resolve(true))
+    target.once("error", () => resolve(false))
+  })
+  if (!opened && stream === target) stream = undefined
+}
+
+async function move(source: string, target: string) {
+  const renamed = await fs.rename(source, target).then(
+    () => true,
+    () => false,
+  )
+  if (renamed) return true
+  const copied = await fs.copyFile(source, target).then<"copied", "missing" | "failed">(
+    () => "copied",
+    (error) => {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") return "missing"
+      report(error)
+      return "failed"
+    },
+  )
+  if (copied === "missing") return true
+  if (copied === "failed") return false
+  const removed = await fs.unlink(source).then(
+    () => true,
+    () => false,
+  )
+  if (removed) return true
+  return fs.truncate(source, 0).then(
+    () => true,
+    (error) => {
+      report(error)
+      return false
+    },
+  )
 }
 
 function close(target: ReturnType<typeof createWriteStream>) {
@@ -147,24 +194,23 @@ export async function flush() {
 }
 
 export async function shutdown() {
+  await enqueue(closeCurrent)
+}
+
+async function closeCurrent() {
   const target = stream
-  if (!target) return flush()
-  pending = pending
-    .then(async () => {
-      await close(target)
-      if (stream !== target) return
-      stream = undefined
-      const completed = logpath.replace(/\.active\.log$/, ".log")
-      await fs.rename(logpath, completed).then(
-        () => {
-          logpath = completed
-        },
-        () => {},
-      )
-      await cleanup(Global.Path.log)
-    })
-    .catch(report)
-  await pending
+  if (!target) return
+  await close(target)
+  stream = undefined
+  written = 0
+  const completed = logpath.replace(/\.active\.log$/, ".log")
+  if (await move(logpath, completed)) logpath = completed
+  await cleanup(Global.Path.log)
+}
+
+export async function exit(code?: number): Promise<never> {
+  await shutdown()
+  process.exit(code)
 }
 
 function alive(pid: number) {
@@ -176,14 +222,17 @@ function alive(pid: number) {
   }
 }
 
-async function cleanup(dir: string) {
+async function cleanup(dir: string, takeover?: { pid: number; role: string }) {
   const entries = await fs.readdir(dir).catch(() => [] as string[])
   const stats = await Promise.all(
     entries.map(async (name) => {
       if (!name.includes(".log")) return null
       if (name.endsWith(".active.log")) {
         const owner = name.match(/-(\d+)-[0-9a-f]{8}\.active\.log$/)?.[1]
-        if (!owner || alive(Number(owner))) return null
+        if (!owner) return null
+        const pid = Number(owner)
+        const sameContext = takeover && pid === takeover.pid && name.includes(`-${takeover.role}-${takeover.pid}-`)
+        if (!sameContext && alive(pid)) return null
         const completed = name.replace(/\.active\.log$/, ".log")
         const renamed = await fs.rename(path.join(dir, name), path.join(dir, completed)).then(
           () => completed,
