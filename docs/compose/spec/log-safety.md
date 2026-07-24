@@ -3,7 +3,7 @@ feature: log-safety
 status: delivered
 updated: 2026-07-24
 branch: fix/log-safety
-commits: e27a610c081744624d0449744911ffcfd3e26b6c..b86149850ba6cef736a96d31eb7198a04b5ecee0
+commits: e27a610c081744624d0449744911ffcfd3e26b6c..ca726ac3
 ---
 
 # Log Safety
@@ -14,7 +14,7 @@ commits: e27a610c081744624d0449744911ffcfd3e26b6c..b86149850ba6cef736a96d31eb719
 
 CLI hard exits now use `Log.exit()`, normal TUI exits return through the top-level shutdown, and the worker closes its log before potentially long teardown work. This guarantees pending records are handled before the process or worker terminates.
 
-**Verification** — `bun test test/util/log.test.ts test/effect/app-runtime-logger.test.ts test/effect/runner-warn-log.test.ts` passed with 20 tests and 52 expectations. `bun typecheck` passed. Targeted oxlint completed with zero errors and only pre-existing warnings. An isolated `bun dev run` error-path check exited with code 1 and produced zero active logs and one completed log. `git diff --check` passed, and the final independent review found no critical issues.
+**Verification** — `bun test test/util/log.test.ts test/effect/app-runtime-logger.test.ts test/effect/runner-warn-log.test.ts` passed with 20 tests and 52 expectations under the CI-equivalent `main` role; the focused log suite also passed all 12 tests under both `main` and `worker` roles. `bun typecheck` passed. Targeted oxlint completed with zero errors and only pre-existing warnings. An isolated `bun dev run` error-path check exited with code 1 and produced zero active logs and one completed log. `git diff --check` passed, and the final independent reviews found no critical issues.
 
 **Journey log**
 
